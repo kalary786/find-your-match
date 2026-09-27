@@ -1,0 +1,11 @@
+# Secrets and local Firebase files
+
+google-services.json
+GoogleService-Info.plist
+*-service-account*.json
+serviceAccount*.json
+.env
+.env.*
+firebase-debug.log
+ui-debug.log
+.firebase/
