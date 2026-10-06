@@ -2,9 +2,9 @@
 
 Meet. Match. Connect.
 
-This repository is an 18+ Android dating and social matching app. The Flutter UI is in place with on-device sample profiles for layout. Firebase is not connected yet, so nothing is written to a database.
+This repository is an 18+ Android dating and social matching app. The Flutter UI is in `mobile/`. Accounts, profiles, photos, matches, chats, reports, and ads are stored by the PHP site in `server/`, which you upload to your own hosting. There is no Firebase.
 
-The Android app lives in `mobile/`.
+The admin panel is `server/admin/`. From there you can block or delete users, delete chats, review reports, and turn ads on or off. The admin password never goes in the Android app.
 
 ## Run the app
 
@@ -16,6 +16,6 @@ flutter test
 flutter run
 ```
 
-The first launch shows onboarding and a profile form that stays on the phone. Discover, search, matches, and chat use clearly labeled sample people.
+Set `ApiConfig.baseUrl` in `mobile/lib/core/api/api_config.dart` to the public `server` folder, for example `https://example.com/server`. Until that address is set, the app stays on the setup screen.
 
-Setup steps for Firebase, AdMob, and Play Console are in [docs/SETUP.md](docs/SETUP.md). That document is a setup guide, not a statement that the app complies with Google Play policy.
+Setup steps are in [docs/SETUP.md](docs/SETUP.md). That document is a setup guide, not a statement that the app complies with Google Play policy.

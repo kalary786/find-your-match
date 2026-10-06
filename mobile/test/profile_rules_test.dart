@@ -25,7 +25,7 @@ void main() {
     expect(error, contains('18 or older'));
   });
 
-  test('a sample username cannot be reused', () {
+  test('a taken username cannot be reused', () {
     final error = validateProfile(
       username: 'sample_mina',
       birthDate: DateTime(1998, 4, 2),
@@ -38,7 +38,7 @@ void main() {
       takenUsernames: const {'sample_mina'},
       today: today,
     );
-    expect(error, contains('sample profile'));
+    expect(error, contains('already used'));
   });
 
   test('a valid adult profile passes', () {

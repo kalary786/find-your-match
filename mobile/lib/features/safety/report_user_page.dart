@@ -1,6 +1,7 @@
 import 'package:find_your_match/core/widgets/primary_button.dart';
 import 'package:find_your_match/features/preview/preview_models.dart';
-import 'package:find_your_match/features/preview/preview_store.dart';
+import 'package:find_your_match/features/profile/account_failure.dart';
+import 'package:find_your_match/features/social/social_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -28,11 +29,11 @@ class _ReportUserPageState extends ConsumerState<ReportUserPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final person = ref.watch(previewControllerProvider).personById(widget.userId);
+    final person = ref.watch(socialControllerProvider).personById(widget.userId);
     return Scaffold(
       appBar: AppBar(title: const Text('Report')),
       body: person == null
-          ? const Center(child: Text('That sample profile is not available.'))
+          ? const Center(child: Text('That profile is not available.'))
           : _sent
           ? Padding(
               padding: const EdgeInsets.all(24),
@@ -46,7 +47,7 @@ class _ReportUserPageState extends ConsumerState<ReportUserPage> {
                   ),
                   const SizedBox(height: 16),
                   Text(
-                    'Report saved on this device',
+                    'Report sent',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w800,
@@ -54,7 +55,7 @@ class _ReportUserPageState extends ConsumerState<ReportUserPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Nothing was sent to a moderator. A later build will store reports for review.',
+                    'An admin can review this report and block or delete the account.',
                     textAlign: TextAlign.center,
                     style: theme.textTheme.bodyLarge,
                   ),
@@ -77,7 +78,7 @@ class _ReportUserPageState extends ConsumerState<ReportUserPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Choose a reason. This preview keeps the report on this phone only.',
+                  'Choose a reason. The report is stored on your website for an admin to review.',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
@@ -113,11 +114,24 @@ class _ReportUserPageState extends ConsumerState<ReportUserPage> {
                   label: 'Submit report',
                   onPressed: _reason == null
                       ? null
-                      : () {
-                          ref
-                              .read(previewControllerProvider.notifier)
-                              .report(person.id);
-                          setState(() => _sent = true);
+                      : () async {
+                          final reason = _reason;
+                          if (reason == null) return;
+                          try {
+                            await ref
+                                .read(socialControllerProvider.notifier)
+                                .report(
+                                  userId: person.id,
+                                  reason: reason,
+                                  details: _note.text.trim(),
+                                );
+                            if (mounted) setState(() => _sent = true);
+                          } on AccountFailure catch (error) {
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(error.message)),
+                            );
+                          }
                         },
                 ),
               ],

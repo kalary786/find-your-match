@@ -1,12 +1,17 @@
 import 'package:find_your_match/app.dart';
+import 'package:find_your_match/core/api/match_api.dart';
 import 'package:find_your_match/core/session/session_controller.dart';
 import 'package:find_your_match/core/session/session_state.dart';
+import 'package:find_your_match/features/preview/preview_models.dart';
+import 'package:find_your_match/features/social/social_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'fake_match_api.dart';
+
 void main() {
-  testWidgets('an unconfigured project opens onboarding', (tester) async {
+  testWidgets('an empty website address opens setup', (tester) async {
     await tester.pumpWidget(
       ProviderScope(
         overrides: [
@@ -18,7 +23,7 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    expect(find.text('Step 1 of 4'), findsOneWidget);
+    expect(find.text('Add your website address'), findsOneWidget);
     expect(find.text('Connect Firebase to continue'), findsNothing);
   });
 
@@ -33,12 +38,14 @@ void main() {
     expect(find.byType(NavigationBar), findsNothing);
   });
 
-  testWidgets('account recovery must be acknowledged before the profile form', (
+  testWidgets('email and password are required before the profile form', (
     tester,
   ) async {
+    final api = FakeMatchApi();
     await _pumpSeeded(
       tester,
-      const SessionState.ready(uid: 'user-1', hasProfile: false),
+      const SessionState.ready(uid: '', hasProfile: false),
+      api: api,
     );
 
     await tester.tap(find.widgetWithText(FilledButton, 'Continue'));
@@ -46,7 +53,7 @@ void main() {
     await tester.tap(find.widgetWithText(FilledButton, 'Continue'));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('cannot be recovered'), findsOneWidget);
+    expect(find.text('Email'), findsOneWidget);
     expect(
       tester
           .widget<FilledButton>(find.widgetWithText(FilledButton, 'Continue'))
@@ -54,8 +61,8 @@ void main() {
       isNull,
     );
 
-    await tester.ensureVisible(find.byType(CheckboxListTile));
-    await tester.tap(find.byType(CheckboxListTile));
+    await tester.enterText(find.byType(TextField).at(0), 'ada@example.com');
+    await tester.enterText(find.byType(TextField).at(1), 'password1');
     await tester.pump();
     expect(
       tester
@@ -72,7 +79,7 @@ void main() {
     expect(find.text('Save profile'), findsOneWidget);
   });
 
-  testWidgets('sample home can open details, chat, filters, and delete', (
+  testWidgets('home can open details, chat, filters, and delete', (
     tester,
   ) async {
     tester.view.physicalSize = const Size(800, 2000);
@@ -80,9 +87,53 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
+    const mina = Person(
+      id: '2',
+      username: 'mina',
+      displayName: 'Mina',
+      age: 27,
+      gender: 'Woman',
+      city: 'Kochi',
+      bio: 'Weekend walks and home cooking.',
+      interests: ['Cooking', 'Travel'],
+      preferences: ['Dating'],
+      hue: 12,
+      isSample: false,
+    );
+    const leila = Person(
+      id: '3',
+      username: 'leila',
+      displayName: 'Leila',
+      age: 26,
+      gender: 'Woman',
+      city: 'Mumbai',
+      bio: 'Morning runs and neighborhood coffee.',
+      interests: ['Fitness', 'Coffee'],
+      preferences: ['Dating'],
+      hue: 28,
+      isSample: false,
+    );
+
     await _pumpSeeded(
       tester,
       const SessionState.ready(uid: 'user-1', hasProfile: true),
+      api: FakeMatchApi(),
+      social: SocialState(
+        discover: [mina],
+        matches: [leila],
+        chats: [ChatThread(person: leila, lastMessage: 'See you Saturday')],
+        messages: {
+          '3': [
+            ChatMessage(
+              id: 'm1',
+              fromMe: false,
+              text: 'See you Saturday',
+              timeLabel: 'Yesterday',
+            ),
+          ],
+        },
+        loaded: true,
+      ),
     );
 
     await tester.tap(find.byKey(const Key('discover-card')));
@@ -115,7 +166,7 @@ void main() {
       'Hello from the preview',
     );
     await tester.tap(find.byTooltip('Send'));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.text('Hello from the preview'), findsOneWidget);
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
@@ -140,11 +191,18 @@ void main() {
   });
 }
 
-Future<void> _pumpSeeded(WidgetTester tester, SessionState session) async {
+Future<void> _pumpSeeded(
+  WidgetTester tester,
+  SessionState session, {
+  MatchApi? api,
+  SocialState? social,
+}) async {
   await tester.pumpWidget(
     ProviderScope(
       overrides: [
         sessionSeedProvider.overrideWithValue(session),
+        if (api != null) matchApiProvider.overrideWithValue(api),
+        if (social != null) socialSeedProvider.overrideWithValue(social),
       ],
       child: const FindYourMatchApp(bootstrapOnStart: false),
     ),

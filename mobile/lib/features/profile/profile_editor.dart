@@ -1,6 +1,10 @@
+import 'dart:typed_data';
+
 import 'package:find_your_match/core/widgets/primary_button.dart';
 import 'package:find_your_match/features/preview/preview_models.dart';
 import 'package:find_your_match/features/preview/profile_rules.dart';
+import 'package:find_your_match/features/profile/account_failure.dart';
+import 'package:find_your_match/features/profile/profile_draft.dart';
 import 'package:flutter/material.dart';
 
 class ProfileEditor extends StatefulWidget {
@@ -12,6 +16,9 @@ class ProfileEditor extends StatefulWidget {
     this.initial,
     this.stepLabel,
     this.onBack,
+    this.choosePhoto,
+    this.photoFileRequired = false,
+    this.keepExistingPhoto = false,
     super.key,
   });
 
@@ -21,7 +28,10 @@ class ProfileEditor extends StatefulWidget {
   final Person? initial;
   final String? stepLabel;
   final VoidCallback? onBack;
-  final ValueChanged<Person> onSubmit;
+  final Future<ProfilePhoto?> Function()? choosePhoto;
+  final bool photoFileRequired;
+  final bool keepExistingPhoto;
+  final Future<void> Function(ProfileDraft draft) onSubmit;
 
   @override
   State<ProfileEditor> createState() => _ProfileEditorState();
@@ -36,9 +46,11 @@ class _ProfileEditorState extends State<ProfileEditor> {
   int? _year;
   String? _gender;
   bool _hasPhoto = false;
+  ProfilePhoto? _photo;
   final _interests = <String>{};
   final _preferences = <String>{};
   String? _error;
+  var _saving = false;
 
   @override
   void initState() {
@@ -67,7 +79,35 @@ class _ProfileEditorState extends State<ProfileEditor> {
     super.dispose();
   }
 
-  void _save() {
+  bool get _photoReady {
+    if (_photo != null) return true;
+    if (widget.photoFileRequired) {
+      return widget.keepExistingPhoto && _hasPhoto;
+    }
+    return _hasPhoto;
+  }
+
+  Future<void> _pickPhoto() async {
+    final choose = widget.choosePhoto;
+    if (choose == null) {
+      setState(() => _hasPhoto = true);
+      return;
+    }
+    try {
+      final photo = await choose();
+      if (!mounted || photo == null) return;
+      setState(() {
+        _photo = photo;
+        _hasPhoto = true;
+        _error = null;
+      });
+    } on AccountFailure catch (error) {
+      if (mounted) setState(() => _error = error.message);
+    }
+  }
+
+  Future<void> _save() async {
+    if (_saving) return;
     final birth = exactDate(_year, _month, _day);
     final error = validateProfile(
       username: _username.text,
@@ -75,7 +115,7 @@ class _ProfileEditorState extends State<ProfileEditor> {
       gender: _gender,
       city: _city.text,
       bio: _bio.text,
-      hasPhoto: _hasPhoto,
+      hasPhoto: _photoReady,
       interests: _interests,
       preferences: _preferences,
       takenUsernames: widget.takenUsernames,
@@ -84,24 +124,32 @@ class _ProfileEditorState extends State<ProfileEditor> {
       setState(() => _error = error ?? 'Enter a real date of birth.');
       return;
     }
-    final now = DateTime.now();
-    final username = _username.text.trim().toLowerCase();
-    final person = Person(
-      id: 'me',
-      username: username,
-      displayName: username,
-      age: ageInYears(birth, now),
+    final draft = ProfileDraft(
+      username: _username.text.trim().toLowerCase(),
+      birthDate: birth,
       gender: _gender!,
       city: _city.text.trim(),
       bio: _bio.text.trim(),
       interests: _interests.toList(),
       preferences: _preferences.toList(),
-      hue: widget.initial?.hue ?? 8,
-      isSample: false,
-      birthDate: birth,
       hasPhoto: true,
+      photo: _photo,
     );
-    widget.onSubmit(person);
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await widget.onSubmit(draft);
+    } on AccountFailure catch (error) {
+      if (!mounted) return;
+      setState(() => _error = error.message);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _error = 'Could not save your profile. Try again.');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
   }
 
   @override
@@ -135,18 +183,20 @@ class _ProfileEditorState extends State<ProfileEditor> {
                   ),
                 const SizedBox(height: 8),
                 Text(
-                  'Adults 18 and older only. This form stays on this device.',
+                  'Adults 18 and older only. Required fields, a unique username, and age are checked again on your website before the profile is saved.',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
                 const SizedBox(height: 16),
                 _PhotoWell(
-                  hasPhoto: _hasPhoto,
+                  hasPhoto: _photoReady,
                   initials: _username.text.isEmpty
                       ? '?'
                       : _username.text[0].toUpperCase(),
-                  onPressed: () => setState(() => _hasPhoto = true),
+                  bytes: _photo?.bytes,
+                  remotePhoto: widget.choosePhoto != null,
+                  onPressed: _saving ? null : _pickPhoto,
                 ),
                 const SizedBox(height: 16),
                 TextField(
@@ -295,8 +345,8 @@ class _ProfileEditorState extends State<ProfileEditor> {
             minimum: const EdgeInsets.fromLTRB(20, 8, 20, 16),
             child: PrimaryButton(
               key: const Key('save-profile'),
-              label: widget.submitLabel,
-              onPressed: _save,
+              label: _saving ? 'Saving…' : widget.submitLabel,
+              onPressed: _saving ? null : () => _save(),
             ),
           ),
         ],
@@ -309,34 +359,44 @@ class _PhotoWell extends StatelessWidget {
   const _PhotoWell({
     required this.hasPhoto,
     required this.initials,
+    required this.remotePhoto,
     required this.onPressed,
+    this.bytes,
   });
 
   final bool hasPhoto;
   final String initials;
-  final VoidCallback onPressed;
+  final bool remotePhoto;
+  final VoidCallback? onPressed;
+  final Uint8List? bytes;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final label = remotePhoto
+        ? (hasPhoto ? 'Change photo' : 'Choose photo')
+        : (hasPhoto ? 'Preview photo added' : 'Add preview photo');
     return Row(
       children: [
         CircleAvatar(
           radius: 36,
           backgroundColor: theme.colorScheme.primaryContainer,
-          child: Text(
-            hasPhoto ? initials : '+',
-            style: theme.textTheme.headlineSmall?.copyWith(
-              fontWeight: FontWeight.w800,
-              color: theme.colorScheme.onPrimaryContainer,
-            ),
-          ),
+          backgroundImage: bytes == null ? null : MemoryImage(bytes!),
+          child: bytes != null
+              ? null
+              : Text(
+                  hasPhoto ? initials : '+',
+                  style: theme.textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: theme.colorScheme.onPrimaryContainer,
+                  ),
+                ),
         ),
         const SizedBox(width: 16),
         Expanded(
           child: OutlinedButton(
-            onPressed: hasPhoto ? null : onPressed,
-            child: Text(hasPhoto ? 'Preview photo added' : 'Add preview photo'),
+            onPressed: remotePhoto ? onPressed : (hasPhoto ? null : onPressed),
+            child: Text(label),
           ),
         ),
       ],

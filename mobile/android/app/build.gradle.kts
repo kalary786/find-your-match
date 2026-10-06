@@ -40,8 +40,3 @@ android {
 flutter {
     source = "../.."
 }
-
-// Applied only after the Firebase Android config file is added locally.
-if (file("google-services.json").exists()) {
-    apply(plugin = "com.google.gms.google-services")
-}

@@ -24,7 +24,7 @@ void main() {
     );
   });
 
-  test('missing Firebase config opens setup', () {
+  test('a missing website address opens setup', () {
     expect(
       redirectForSession(const SessionState.needsSetup(), AppRoutes.splash),
       AppRoutes.setup,

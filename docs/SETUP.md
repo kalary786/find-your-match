@@ -1,41 +1,39 @@
 # Setup
 
-This guide is what you need before the app can talk to live services. It is not a compliance sign-off. Re-check the linked Play policies in Play Console before you submit an app.
+This guide is what you need before the app can talk to your website. It is not a compliance sign-off. Re-check the linked Play policies in Play Console before you submit an app.
 
-The Flutter UI can be run before any Firebase project exists. AdMob and the admin panel are later phases. Sample people in the app are layout data only.
+The Flutter UI can be opened before the site is uploaded. It stays on the setup screen until `ApiConfig.baseUrl` is set.
 
-## Firebase
+## Your hosting
 
-1. Create a Firebase project and upgrade it to the Blaze plan before you deploy Cloud Functions, Cloud Storage, or scheduled jobs. Auth and Firestore can be tried on the Spark plan, but the planned backend needs Blaze.
-2. Register an Android app with package name `com.findyourmatch.app`.
-3. Download `google-services.json` and place it at `mobile/android/app/google-services.json`. Do not commit that file.
-4. In the Firebase console, enable:
-   - Authentication → Anonymous
-   - Cloud Firestore
-   - Storage (when photo upload is added)
-   - Cloud Messaging
-   - Analytics
-5. Install the FlutterFire CLI and run it from `mobile/` so the Android app id matches this project. Then set `FirebaseAppConfig.isConfigured` to `true` in `mobile/lib/core/firebase/firebase_app_config.dart` and restart.
-6. Deploy the rules in `firebase/` before any client write is allowed. Those rules currently deny every read and write on purpose. Do not open them to all signed-in users.
-7. Keep the Firebase Admin SDK, service account JSON, and admin passwords off the phone and out of git.
+The site in `server/` is PHP 8 and MySQL. Upload that folder to shared hosting or any host that runs PHP and MySQL. Do not commit `server/config.php`.
 
-Anonymous sign-in has no email and no password. The session stays on that install. A later phase will show a one-time recovery code and store only a hash of it. If the phone session and the code are both lost, the account cannot be restored.
+1. Create an empty MySQL database.
+2. Copy `server/config.example.php` to `server/config.php`.
+3. Fill in the database name, user, password, and `base_url`. `base_url` is the public address of the `server` folder with no trailing slash, for example `https://example.com/server`.
+4. Open `https://example.com/server/install.php` once and create the admin email and password.
+5. Delete `install.php` from the server after that account exists.
+6. Sign in at `https://example.com/server/admin/`.
+7. In `mobile/lib/core/api/api_config.dart`, set `baseUrl` to the same `base_url`, then rebuild the app.
 
-The current UI runs without Firebase. Sample profiles, likes, and messages stay in memory and are labeled as sample data. They are not written to Firestore.
+The admin password stays on the website. The Android app only stores the signed-in user's token on that phone.
 
-When `FirebaseAppConfig.isConfigured` is turned on, startup will use anonymous sign-in and read `users/{uid}/public/profile` again. That read is not used while the flag is false. Nothing in the UI writes a profile document yet.
+People register with email and password inside the app. The same login works on another phone. Age is calculated on the server from `YYYY-MM-DD`. Usernames are unique. Photos are stored under `server/uploads/`.
+
+From the admin panel you can:
+
+- Block a user, which signs them out and hides them
+- Unblock a user
+- Delete a user, including the profile, photo, likes, and chats
+- Open or delete a chat
+- Review reports, then block or delete the reported user
+- Add an ad image and link for Discover, Search, or Matches, and turn it on or off
+
+Chat, report, and account deletion do not show ads.
 
 ## AdMob
 
-Not wired in this phase.
-
-When ads are added:
-
-- Use Google’s test app id and test ad unit ids in development.
-- Put production ids in environment configuration only after test ads are confirmed on a device.
-- Ask for consent with Google’s User Messaging Platform before requesting ads.
-- Keep ads off onboarding, chat, report, block, verification, legal pages, and account deletion.
-- Do not commit a live ad unit as if it were a test id.
+Not wired. Ads in the app are the images you upload in the admin panel.
 
 ## Play Console
 

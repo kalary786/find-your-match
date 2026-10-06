@@ -1,7 +1,7 @@
 import 'package:find_your_match/core/routing/app_routes.dart';
-import 'package:find_your_match/core/widgets/sample_banner.dart';
 import 'package:find_your_match/features/preview/preview_models.dart';
-import 'package:find_your_match/features/preview/preview_store.dart';
+import 'package:find_your_match/features/profile/account_failure.dart';
+import 'package:find_your_match/features/social/social_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -19,27 +19,41 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
   final _text = TextEditingController();
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(socialControllerProvider.notifier).openChat(widget.userId);
+    });
+  }
+
+  @override
   void dispose() {
     _text.dispose();
     super.dispose();
   }
 
-  void _send() {
-    ref.read(previewControllerProvider.notifier).sendMessage(
-      widget.userId,
-      _text.text,
-    );
+  Future<void> _send() async {
+    final text = _text.text;
     _text.clear();
+    try {
+      await ref
+          .read(socialControllerProvider.notifier)
+          .sendMessage(widget.userId, text);
+    } on AccountFailure catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final preview = ref.watch(previewControllerProvider);
-    final person = preview.personById(widget.userId);
+    final social = ref.watch(socialControllerProvider);
+    final person = social.personById(widget.userId);
     final theme = Theme.of(context);
-    if (person == null ||
-        preview.blockedIds.contains(widget.userId) ||
-        !preview.isMatched(widget.userId)) {
+    final blocked = social.blocked.any((item) => item.id == widget.userId);
+    if (person == null || blocked || !social.isMatched(widget.userId)) {
       return Scaffold(
         appBar: AppBar(title: const Text('Chat')),
         body: const Center(
@@ -53,20 +67,29 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
         ),
       );
     }
-    final messages = preview.messages[person.id] ?? const <PreviewMessage>[];
+    final messages = social.messages[person.id] ?? const <ChatMessage>[];
     return Scaffold(
       appBar: AppBar(
         title: Text(person.displayName),
         actions: [
           PopupMenuButton<String>(
-            onSelected: (value) {
+            onSelected: (value) async {
               if (value == 'profile') {
                 context.push(AppRoutes.person(person.id));
               } else if (value == 'report') {
                 context.push(AppRoutes.report(person.id));
               } else if (value == 'block') {
-                ref.read(previewControllerProvider.notifier).block(person.id);
-                context.pop();
+                try {
+                  await ref
+                      .read(socialControllerProvider.notifier)
+                      .block(person.id);
+                  if (context.mounted) context.pop();
+                } on AccountFailure catch (error) {
+                  if (!context.mounted) return;
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text(error.message)),
+                  );
+                }
               }
             },
             itemBuilder: (context) => const [
@@ -79,7 +102,6 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
       ),
       body: Column(
         children: [
-          const SampleBanner(),
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.all(16),
@@ -88,7 +110,9 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
                 final message = messages[index];
                 final mine = message.fromMe;
                 return Align(
-                  alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+                  alignment: mine
+                      ? Alignment.centerRight
+                      : Alignment.centerLeft,
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 8),
                     constraints: const BoxConstraints(maxWidth: 320),
@@ -118,7 +142,9 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
                           message.timeLabel,
                           style: theme.textTheme.labelSmall?.copyWith(
                             color: mine
-                                ? theme.colorScheme.onPrimary.withValues(alpha: 0.8)
+                                ? theme.colorScheme.onPrimary.withValues(
+                                    alpha: 0.8,
+                                  )
                                 : theme.colorScheme.onSurfaceVariant,
                           ),
                         ),

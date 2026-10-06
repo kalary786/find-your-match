@@ -1,5 +1,5 @@
-/// Age and field checks for the on-device profile form.
-/// Nothing here writes to Firebase.
+/// Age and field checks for the profile form.
+/// The server repeats these checks before anything is stored.
 bool isAtLeast18(DateTime birth, DateTime today) {
   final cutoff = DateTime(today.year - 18, today.month, today.day);
   return !birth.isAfter(cutoff);
@@ -38,7 +38,7 @@ String? validateProfile({
     return 'Username must be 3–20 characters: lowercase letters, numbers, or underscore.';
   }
   if (takenUsernames.contains(name)) {
-    return 'That username is already used by a sample profile.';
+    return 'That username is already used.';
   }
   if (birthDate == null) return 'Enter your date of birth.';
   final now = today ?? DateTime.now();

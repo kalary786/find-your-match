@@ -17,6 +17,7 @@ class Person {
     this.lastActive = 'Active today',
     this.verified = false,
     this.likesYou = false,
+    this.photoUrl,
   });
 
   final String id;
@@ -36,6 +37,7 @@ class Person {
   final String lastActive;
   final bool verified;
   final bool likesYou;
+  final String? photoUrl;
 
   String get initials {
     final parts = displayName
@@ -84,8 +86,8 @@ class Person {
   }
 }
 
-class PreviewMessage {
-  const PreviewMessage({
+class ChatMessage {
+  const ChatMessage({
     required this.id,
     required this.fromMe,
     required this.text,
@@ -96,6 +98,22 @@ class PreviewMessage {
   final bool fromMe;
   final String text;
   final String timeLabel;
+}
+
+class HostedAd {
+  const HostedAd({
+    required this.id,
+    required this.title,
+    required this.imageUrl,
+    required this.linkUrl,
+    required this.placement,
+  });
+
+  final String id;
+  final String title;
+  final String imageUrl;
+  final String linkUrl;
+  final String placement;
 }
 
 class SearchFilter {

@@ -1,6 +1,7 @@
 import 'package:find_your_match/core/routing/app_routes.dart';
 import 'package:find_your_match/core/theme/theme_mode_controller.dart';
-import 'package:find_your_match/features/preview/preview_store.dart';
+import 'package:find_your_match/features/profile/account_failure.dart';
+import 'package:find_your_match/features/social/social_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,7 +13,7 @@ class SettingsPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final themeMode = ref.watch(themeModeProvider);
-    final preview = ref.watch(previewControllerProvider);
+    final social = ref.watch(socialControllerProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
       body: ListView(
@@ -61,20 +62,16 @@ class SettingsPage extends ConsumerWidget {
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Show online status'),
-            subtitle: const Text('Off until you turn it on. Stored on this device.'),
-            value: preview.showOnline,
-            onChanged: (value) {
-              ref.read(previewControllerProvider.notifier).setShowOnline(value);
-            },
+            subtitle: const Text('Off until you turn it on. Saved on your account.'),
+            value: social.showOnline,
+            onChanged: (value) => _privacy(context, ref, online: value),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Show last active'),
-            subtitle: const Text('Off until you turn it on. Stored on this device.'),
-            value: preview.showLastActive,
-            onChanged: (value) {
-              ref.read(previewControllerProvider.notifier).setShowLastActive(value);
-            },
+            subtitle: const Text('Off until you turn it on. Saved on your account.'),
+            value: social.showLastActive,
+            onChanged: (value) => _privacy(context, ref, active: value),
           ),
           const SizedBox(height: 8),
           ListTile(
@@ -94,7 +91,7 @@ class SettingsPage extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           Text(
-            'This preview signs you in on this phone only. There is no email or password. A recovery code is planned for a later build. If you lose the phone and that code, the account cannot be recovered.',
+            'This account uses the email and password stored on your website. An admin can block the account or delete chats from the admin panel.',
             style: theme.textTheme.bodyMedium?.copyWith(
               color: theme.colorScheme.onSurfaceVariant,
             ),
@@ -114,5 +111,26 @@ class SettingsPage extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _privacy(
+    BuildContext context,
+    WidgetRef ref, {
+    bool? online,
+    bool? active,
+  }) async {
+    try {
+      final social = ref.read(socialControllerProvider.notifier);
+      if (online != null) {
+        await social.setShowOnline(online);
+      } else if (active != null) {
+        await social.setShowLastActive(active);
+      }
+    } on AccountFailure catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    }
   }
 }

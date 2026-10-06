@@ -15,7 +15,7 @@ class SetupPage extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(24, 32, 24, 24),
           children: [
             Text(
-              'Connect Firebase to continue',
+              'Add your website address',
               style: theme.textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.w800,
                 letterSpacing: -0.4,
@@ -23,28 +23,28 @@ class SetupPage extends ConsumerWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              'Anonymous sign-in is built, and it stays off until this install has a Firebase project. No sample people are included.',
+              'Profiles, chats, and ads come from the PHP site you host. The app stays on this screen until that address is set.',
               style: theme.textTheme.bodyLarge,
             ),
             const SizedBox(height: 20),
             const _SetupStep(
               number: '1',
               text:
-                  'Create a Firebase project, register the Android app, and enable Anonymous Authentication and Cloud Firestore.',
+                  'Create a MySQL database, copy server/config.example.php to server/config.php, and open server/install.php once.',
             ),
             const _SetupStep(
               number: '2',
               text:
-                  'Download google-services.json into mobile/android/app. Do not commit it.',
+                  'Upload the server folder to your hosting. Delete install.php after the admin account exists.',
             ),
             const _SetupStep(
               number: '3',
               text:
-                  'Set FirebaseAppConfig.isConfigured to true, then restart the app.',
+                  'Set ApiConfig.baseUrl to that public folder, for example https://example.com/server, then restart the app.',
             ),
             const SizedBox(height: 8),
             Text(
-              'Admin passwords and service accounts never belong in this app.',
+              'The admin password stays on the website. It is never stored in this app.',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
               ),

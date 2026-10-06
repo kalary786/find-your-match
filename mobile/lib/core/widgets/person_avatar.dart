@@ -50,56 +50,25 @@ class PersonCover extends StatelessWidget {
         ),
         child: Stack(
           children: [
-            Center(
-              child: Text(
-                person.initials,
-                style: theme.textTheme.displayLarge?.copyWith(
-                  color: Colors.white.withValues(alpha: 0.92),
-                  fontWeight: FontWeight.w800,
+            if (person.photoUrl != null)
+              Positioned.fill(
+                child: Image.network(
+                  person.photoUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
                 ),
               ),
-            ),
-            Positioned(
-              left: 16,
-              top: 16,
-              child: _CoverChip(
-                label: person.isSample ? 'Sample' : 'Your photo',
-              ),
-            ),
-            if (person.verified)
-              const Positioned(
-                right: 16,
-                top: 16,
-                child: _CoverChip(label: 'Layout badge'),
+            if (person.photoUrl == null)
+              Center(
+                child: Text(
+                  person.initials,
+                  style: theme.textTheme.displayLarge?.copyWith(
+                    color: Colors.white.withValues(alpha: 0.92),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CoverChip extends StatelessWidget {
-  const _CoverChip({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.28),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        child: Text(
-          label,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w700,
-            fontSize: 12,
-          ),
         ),
       ),
     );

@@ -3,66 +3,74 @@ import 'package:find_your_match/core/widgets/centered_panel.dart';
 import 'package:find_your_match/core/widgets/empty_state.dart';
 import 'package:find_your_match/core/widgets/interest_wrap.dart';
 import 'package:find_your_match/core/widgets/person_avatar.dart';
-import 'package:find_your_match/core/widgets/sample_banner.dart';
+import 'package:find_your_match/features/ads/placement_ad.dart';
 import 'package:find_your_match/features/preview/preview_models.dart';
-import 'package:find_your_match/features/preview/preview_store.dart';
+import 'package:find_your_match/features/profile/account_failure.dart';
+import 'package:find_your_match/features/profile/saved_account.dart';
+import 'package:find_your_match/features/social/social_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-class DiscoverPage extends ConsumerWidget {
+class DiscoverPage extends ConsumerStatefulWidget {
   const DiscoverPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final preview = ref.watch(previewControllerProvider);
-    final queue = preview.discoverQueue;
+  ConsumerState<DiscoverPage> createState() => _DiscoverPageState();
+}
+
+class _DiscoverPageState extends ConsumerState<DiscoverPage> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(socialControllerProvider.notifier).ensureLoaded();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final social = ref.watch(socialControllerProvider);
+    final hidden = ref.watch(savedAccountProvider)?.hidden ?? false;
+    final queue = social.discover;
     return Scaffold(
       appBar: AppBar(title: const Text('Discover')),
       body: CenteredPanel(
         child: Column(
           children: [
-            const SampleBanner(),
-            if (preview.hidden)
+            const PlacementAd(placement: 'discover'),
+            if (hidden)
               const Padding(
                 padding: EdgeInsets.fromLTRB(16, 8, 16, 0),
-                child: Text('Your profile is hidden in this preview.'),
+                child: Text(
+                  'Your profile is hidden. Other people cannot find you until you show it again.',
+                ),
               ),
             Expanded(
-              child: queue.isEmpty
+              child: social.loading && queue.isEmpty
+                  ? const Center(child: CircularProgressIndicator())
+                  : queue.isEmpty
                   ? EmptyState(
                       icon: Icons.explore_outlined,
-                      title: 'No sample profiles left',
-                      message:
-                          'You have liked or passed the layout profiles. Review them again, or open Search.',
+                      title: social.error == null
+                          ? 'No profiles left'
+                          : 'Could not load profiles',
+                      message: social.error ??
+                          'New people will show up here when they join. You can also open Search.',
                     )
                   : Padding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                       child: _DiscoverCard(person: queue.first),
                     ),
             ),
-            if (queue.isEmpty)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: OutlinedButton(
-                  onPressed: () {
-                    ref.read(previewControllerProvider.notifier).resetDeck();
-                  },
-                  child: const Text('Review sample profiles again'),
-                ),
-              )
-            else
+            if (queue.isNotEmpty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                 child: Row(
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: () {
-                          ref
-                              .read(previewControllerProvider.notifier)
-                              .pass(queue.first.id);
-                        },
+                        onPressed: () => _pass(queue.first.id),
                         icon: const Icon(Icons.close),
                         label: const Text('Pass'),
                       ),
@@ -71,20 +79,7 @@ class DiscoverPage extends ConsumerWidget {
                     Expanded(
                       child: FilledButton.icon(
                         key: const Key('discover-like'),
-                        onPressed: () {
-                          final matched = ref
-                              .read(previewControllerProvider.notifier)
-                              .like(queue.first.id);
-                          if (matched && context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Sample match with ${queue.first.displayName}.',
-                                ),
-                              ),
-                            );
-                          }
-                        },
+                        onPressed: () => _like(queue.first),
                         icon: const Icon(Icons.favorite),
                         label: const Text('Like'),
                       ),
@@ -95,6 +90,34 @@ class DiscoverPage extends ConsumerWidget {
           ],
         ),
       ),
+    );
+  }
+
+  Future<void> _pass(String id) async {
+    try {
+      await ref.read(socialControllerProvider.notifier).pass(id);
+    } on AccountFailure catch (error) {
+      _show(error.message);
+    }
+  }
+
+  Future<void> _like(Person person) async {
+    try {
+      final matched = await ref
+          .read(socialControllerProvider.notifier)
+          .like(person.id);
+      if (matched && mounted) {
+        _show('You matched with ${person.displayName}.');
+      }
+    } on AccountFailure catch (error) {
+      _show(error.message);
+    }
+  }
+
+  void _show(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
     );
   }
 }

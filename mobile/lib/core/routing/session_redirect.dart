@@ -2,7 +2,7 @@ import 'package:find_your_match/core/routing/app_routes.dart';
 import 'package:find_your_match/core/session/session_state.dart';
 
 /// Chooses the next location from the session. Pure so tests can cover it
-/// without Firebase.
+/// without a server.
 String? redirectForSession(SessionState session, String location) {
   switch (session.status) {
     case SessionStatus.loading:

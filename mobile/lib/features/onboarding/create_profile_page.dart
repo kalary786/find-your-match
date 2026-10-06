@@ -1,7 +1,6 @@
 import 'package:find_your_match/core/routing/app_routes.dart';
-import 'package:find_your_match/core/session/session_controller.dart';
-import 'package:find_your_match/features/preview/mock_people.dart';
-import 'package:find_your_match/features/preview/preview_store.dart';
+import 'package:find_your_match/features/profile/account_actions.dart';
+import 'package:find_your_match/features/profile/api_account_actions.dart';
 import 'package:find_your_match/features/profile/profile_editor.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,14 +15,20 @@ class CreateProfilePage extends ConsumerWidget {
       title: 'Create profile',
       stepLabel: 'Step 4 of 4',
       submitLabel: 'Save profile',
-      takenUsernames: MockPeople.takenUsernames(),
+      photoFileRequired: true,
+      choosePhoto: pickGalleryPhoto,
+      takenUsernames: const {},
       onBack: () => context.go(AppRoutes.account),
-      onSubmit: (person) {
-        ref.read(previewControllerProvider.notifier).saveSelf(person);
-        ref.read(sessionControllerProvider.notifier).completeLocalProfile();
+      onSubmit: (draft) async {
+        final outcome = await ref.read(accountActionsProvider).create(draft);
+        if (!context.mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profile saved on this device. Not sent to a database.'),
+          SnackBar(
+            content: Text(
+              outcome.alreadyExisted
+                  ? 'This account already has a profile. Opening the saved one.'
+                  : 'Profile saved.',
+            ),
           ),
         );
         context.go(AppRoutes.discover);

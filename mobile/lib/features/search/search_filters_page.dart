@@ -1,6 +1,6 @@
 import 'package:find_your_match/core/widgets/primary_button.dart';
 import 'package:find_your_match/features/preview/preview_models.dart';
-import 'package:find_your_match/features/preview/preview_store.dart';
+import 'package:find_your_match/features/social/social_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -21,7 +21,7 @@ class _SearchFiltersPageState extends ConsumerState<SearchFiltersPage> {
   @override
   void initState() {
     super.initState();
-    final filter = ref.read(previewControllerProvider).filter;
+    final filter = ref.read(socialControllerProvider).filter;
     _ages = RangeValues(filter.minAge.toDouble(), filter.maxAge.toDouble());
     _gender = filter.gender;
     _interests = {...filter.interests};
@@ -156,8 +156,8 @@ class _SearchFiltersPageState extends ConsumerState<SearchFiltersPage> {
                 Expanded(
                   child: PrimaryButton(
                     label: 'Apply',
-                    onPressed: () {
-                      ref.read(previewControllerProvider.notifier).setFilter(
+                    onPressed: () async {
+                      await ref.read(socialControllerProvider.notifier).setFilter(
                         SearchFilter(
                           minAge: _ages.start.round(),
                           maxAge: _ages.end.round(),
@@ -166,7 +166,7 @@ class _SearchFiltersPageState extends ConsumerState<SearchFiltersPage> {
                           preferences: _preferences,
                         ),
                       );
-                      context.pop();
+                      if (context.mounted) context.pop();
                     },
                   ),
                 ),

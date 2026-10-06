@@ -1,0 +1,132 @@
+:root {
+  color-scheme: light;
+  font-family: "Segoe UI", sans-serif;
+  background: #f4f1ea;
+  color: #1d1a16;
+}
+
+body {
+  margin: 0;
+}
+
+header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  padding: 16px 20px;
+  background: #1d1a16;
+  color: #fff;
+}
+
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+nav a, a {
+  color: inherit;
+}
+
+header a {
+  color: #fff;
+}
+
+main {
+  padding: 20px;
+  max-width: 1100px;
+}
+
+.narrow, form.narrow {
+  max-width: 420px;
+}
+
+label {
+  display: block;
+  margin: 12px 0;
+  font-weight: 650;
+}
+
+input, select, button {
+  font: inherit;
+}
+
+input, select {
+  display: block;
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px solid #c9c1b4;
+  border-radius: 10px;
+  background: #fff;
+}
+
+button, .actions a {
+  border: 0;
+  border-radius: 999px;
+  padding: 8px 14px;
+  background: #8c3d2f;
+  color: #fff;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+button.danger {
+  background: #6e1d1d;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: #fff;
+  margin-top: 16px;
+}
+
+th, td {
+  text-align: left;
+  padding: 10px 12px;
+  border-bottom: 1px solid #eadfce;
+  vertical-align: top;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.actions form {
+  margin: 0;
+}
+
+.error {
+  color: #8a1f1f;
+  font-weight: 700;
+}
+
+.ok {
+  color: #1d5c32;
+  font-weight: 700;
+}
+
+.thumb {
+  width: 96px;
+  height: 54px;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.thread article {
+  background: #fff;
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+}
+
+time {
+  color: #6d645b;
+  font-size: 0.85rem;
+}

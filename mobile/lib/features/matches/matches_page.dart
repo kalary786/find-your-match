@@ -1,8 +1,8 @@
 import 'package:find_your_match/core/routing/app_routes.dart';
 import 'package:find_your_match/core/widgets/empty_state.dart';
 import 'package:find_your_match/core/widgets/person_avatar.dart';
-import 'package:find_your_match/core/widgets/sample_banner.dart';
-import 'package:find_your_match/features/preview/preview_store.dart';
+import 'package:find_your_match/features/ads/placement_ad.dart';
+import 'package:find_your_match/features/social/social_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -12,19 +12,19 @@ class MatchesPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final matches = ref.watch(previewControllerProvider).matches;
+    final matches = ref.watch(socialControllerProvider).matches;
     return Scaffold(
       appBar: AppBar(title: const Text('Matches')),
       body: Column(
         children: [
-          const SampleBanner(),
+          const PlacementAd(placement: 'matches'),
           Expanded(
             child: matches.isEmpty
                 ? const EmptyState(
                     icon: Icons.favorite_outline,
-                    title: 'No sample matches',
+                    title: 'No matches yet',
                     message:
-                        'A match appears here when you like a sample profile that already likes you.',
+                        'A match appears here when you both like each other.',
                   )
                 : ListView.separated(
                     padding: const EdgeInsets.all(16),
@@ -42,7 +42,7 @@ class MatchesPage extends ConsumerWidget {
                         ).colorScheme.surfaceContainerLowest,
                         leading: PersonAvatar(person: person),
                         title: Text(person.displayName),
-                        subtitle: const Text('Sample match'),
+                        subtitle: Text('${person.age} · ${person.city}'),
                         trailing: IconButton(
                           tooltip: 'Chat',
                           onPressed: () =>

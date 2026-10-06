@@ -2,8 +2,8 @@ import 'package:find_your_match/core/routing/app_routes.dart';
 import 'package:find_your_match/core/widgets/interest_wrap.dart';
 import 'package:find_your_match/core/widgets/person_avatar.dart';
 import 'package:find_your_match/core/widgets/primary_button.dart';
-import 'package:find_your_match/core/widgets/sample_banner.dart';
-import 'package:find_your_match/features/preview/preview_store.dart';
+import 'package:find_your_match/features/profile/account_failure.dart';
+import 'package:find_your_match/features/social/social_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -15,24 +15,21 @@ class UserDetailsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final preview = ref.watch(previewControllerProvider);
-    final person = preview.personById(userId);
-    if (person == null || preview.blockedIds.contains(userId)) {
+    final social = ref.watch(socialControllerProvider);
+    final person = social.personById(userId);
+    if (person == null || social.blocked.any((item) => item.id == userId)) {
       return Scaffold(
         appBar: AppBar(title: const Text('Profile')),
-        body: const Center(child: Text('This sample profile is not available.')),
+        body: const Center(child: Text('This profile is not available.')),
       );
     }
     final theme = Theme.of(context);
-    final matched = preview.isMatched(person.id);
-    final liked = preview.likedIds.contains(person.id);
+    final matched = social.isMatched(person.id);
     return Scaffold(
       appBar: AppBar(title: Text(person.displayName)),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         children: [
-          const SampleBanner(),
-          const SizedBox(height: 12),
           PersonCover(person: person, height: 320),
           const SizedBox(height: 16),
           Text(
@@ -48,21 +45,13 @@ class UserDetailsPage extends ConsumerWidget {
               color: theme.colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 4),
-          Text(
-            person.online ? 'Sample status: online' : 'Sample status: ${person.lastActive}',
-            style: theme.textTheme.bodyMedium,
-          ),
-          if (person.verified)
-            Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                'Layout badge only. This is not an identity check.',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
+          if (person.online || person.lastActive.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Text(
+              person.online ? 'Online' : person.lastActive,
+              style: theme.textTheme.bodyMedium,
             ),
+          ],
           const SizedBox(height: 16),
           Text(person.bio, style: theme.textTheme.bodyLarge),
           const SizedBox(height: 16),
@@ -79,29 +68,39 @@ class UserDetailsPage extends ConsumerWidget {
               label: 'Open chat',
               onPressed: () => context.push(AppRoutes.conversation(person.id)),
             )
-          else if (!liked)
+          else
             PrimaryButton(
               label: 'Like',
-              onPressed: () {
-                final created = ref
-                    .read(previewControllerProvider.notifier)
-                    .like(person.id);
-                if (created && context.mounted) {
+              onPressed: () async {
+                try {
+                  final created = await ref
+                      .read(socialControllerProvider.notifier)
+                      .like(person.id);
+                  if (created && context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('It is a match.')),
+                    );
+                  }
+                } on AccountFailure catch (error) {
+                  if (!context.mounted) return;
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Sample match created.')),
+                    SnackBar(content: Text(error.message)),
                   );
                 }
               },
-            )
-          else
-            const PrimaryButton(label: 'Liked', onPressed: null),
+            ),
           const SizedBox(height: 8),
           Row(
             children: [
               Expanded(
                 child: OutlinedButton(
                   key: const Key('block-user'),
-                  onPressed: () => _confirmBlock(context, ref, person.displayName, person.id),
+                  onPressed: () => _confirmBlock(
+                    context,
+                    ref,
+                    person.displayName,
+                    person.id,
+                  ),
                   child: const Text('Block'),
                 ),
               ),
@@ -132,7 +131,7 @@ class UserDetailsPage extends ConsumerWidget {
         return AlertDialog(
           title: Text('Block $name?'),
           content: const Text(
-            'They leave Discover, Search, Matches, and Chat in this preview. You can unblock them from Settings.',
+            'They leave Discover, Search, Matches, and Chat. You can unblock them from Settings.',
           ),
           actions: [
             TextButton(
@@ -148,7 +147,14 @@ class UserDetailsPage extends ConsumerWidget {
       },
     );
     if (blocked != true || !context.mounted) return;
-    ref.read(previewControllerProvider.notifier).block(id);
-    context.pop();
+    try {
+      await ref.read(socialControllerProvider.notifier).block(id);
+      if (context.mounted) context.pop();
+    } on AccountFailure catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    }
   }
 }

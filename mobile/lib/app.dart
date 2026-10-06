@@ -10,7 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 class FindYourMatchApp extends ConsumerStatefulWidget {
   const FindYourMatchApp({this.bootstrapOnStart = true, super.key});
 
-  /// Widget tests that seed a session skip the Firebase bootstrap.
+  /// Widget tests that seed a session skip the server bootstrap.
   final bool bootstrapOnStart;
 
   @override

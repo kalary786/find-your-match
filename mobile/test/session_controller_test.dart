@@ -1,19 +1,26 @@
-import 'package:find_your_match/core/session/auth_gateway.dart';
-import 'package:find_your_match/core/session/profile_gateway.dart';
 import 'package:find_your_match/core/session/session_controller.dart';
 import 'package:find_your_match/core/session/session_state.dart';
+import 'package:find_your_match/features/preview/preview_models.dart';
+import 'package:find_your_match/features/profile/account_failure.dart';
+import 'package:find_your_match/features/profile/saved_account.dart';
+import 'package:find_your_match/core/api/match_api.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import 'fake_match_api.dart';
+
 void main() {
-  test('anonymous sign-in runs before the profile check', () async {
-    final auth = _FakeAuth('user-1');
-    final profiles = _FakeProfiles(completed: true);
+  test('a saved token loads the profile before home', () async {
+    final api = FakeMatchApi()
+      ..restoreResult = MeResult(
+        userId: 'user-1',
+        hasProfile: true,
+        account: SavedAccount(person: _person('user-1'), hidden: false),
+      );
     final container = ProviderContainer(
       overrides: [
-        firebaseConfiguredProvider.overrideWithValue(true),
-        authGatewayProvider.overrideWithValue(auth),
-        profileGatewayProvider.overrideWithValue(profiles),
+        apiBaseUrlProvider.overrideWithValue('https://example.test/server'),
+        matchApiProvider.overrideWithValue(api),
       ],
     );
     addTearDown(container.dispose);
@@ -21,21 +28,20 @@ void main() {
     await container.read(sessionControllerProvider.notifier).bootstrap();
 
     final state = container.read(sessionControllerProvider);
-    expect(auth.calls, 1);
-    expect(profiles.seenUid, 'user-1');
+    expect(api.restoreCalls, 1);
     expect(state.status, SessionStatus.ready);
     expect(state.uid, 'user-1');
     expect(state.hasProfile, isTrue);
+    expect(container.read(savedAccountProvider)?.person.username, 'ada');
   });
 
   test('a missing profile keeps the user out of home', () async {
+    final api = FakeMatchApi()
+      ..restoreResult = const MeResult(userId: 'user-2', hasProfile: false);
     final container = ProviderContainer(
       overrides: [
-        firebaseConfiguredProvider.overrideWithValue(true),
-        authGatewayProvider.overrideWithValue(_FakeAuth('user-2')),
-        profileGatewayProvider.overrideWithValue(
-          _FakeProfiles(completed: false),
-        ),
+        apiBaseUrlProvider.overrideWithValue('https://example.test/server'),
+        matchApiProvider.overrideWithValue(api),
       ],
     );
     addTearDown(container.dispose);
@@ -47,13 +53,13 @@ void main() {
     expect(state.status, SessionStatus.ready);
   });
 
-  test('Firebase stays untouched when the project is not configured', () async {
-    final auth = _FakeAuth('should-not-run');
+  test('an empty website address does not call the server', () async {
+    final api = FakeMatchApi();
     final container = ProviderContainer(
       overrides: [
-        firebaseConfiguredProvider.overrideWithValue(false),
+        apiBaseUrlProvider.overrideWithValue(''),
         splashHoldProvider.overrideWithValue(Duration.zero),
-        authGatewayProvider.overrideWithValue(auth),
+        matchApiProvider.overrideWithValue(api),
       ],
     );
     addTearDown(container.dispose);
@@ -61,19 +67,20 @@ void main() {
     await container.read(sessionControllerProvider.notifier).bootstrap();
 
     final state = container.read(sessionControllerProvider);
-    expect(auth.calls, 0);
-    expect(state.status, SessionStatus.ready);
-    expect(state.hasProfile, isFalse);
-    expect(state.uid, 'local-preview');
+    expect(api.restoreCalls, 0);
+    expect(state.status, SessionStatus.needsSetup);
   });
 
   test('auth failures surface a message and do not invent a profile', () async {
+    final api = FakeMatchApi()
+      ..restoreError = const AccountFailure(
+        AccountFailureKind.unknown,
+        'Sign in again.',
+      );
     final container = ProviderContainer(
       overrides: [
-        firebaseConfiguredProvider.overrideWithValue(true),
-        authGatewayProvider.overrideWithValue(
-          _FakeAuth.error(const AuthFailure('Anonymous sign-in did not return a user.')),
-        ),
+        apiBaseUrlProvider.overrideWithValue('https://example.test/server'),
+        matchApiProvider.overrideWithValue(api),
       ],
     );
     addTearDown(container.dispose);
@@ -83,37 +90,22 @@ void main() {
     final state = container.read(sessionControllerProvider);
     expect(state.status, SessionStatus.error);
     expect(state.hasProfile, isFalse);
-    expect(state.errorMessage, contains('Anonymous sign-in'));
+    expect(state.errorMessage, contains('Sign in again'));
   });
 }
 
-class _FakeAuth implements AuthGateway {
-  _FakeAuth(this.uid) : failure = null;
-
-  _FakeAuth.error(this.failure) : uid = '';
-
-  final String uid;
-  final AuthFailure? failure;
-  int calls = 0;
-
-  @override
-  Future<String> ensureAnonymousUser() async {
-    calls += 1;
-    final error = failure;
-    if (error != null) throw error;
-    return uid;
-  }
-}
-
-class _FakeProfiles implements ProfileGateway {
-  _FakeProfiles({required this.completed});
-
-  final bool completed;
-  String? seenUid;
-
-  @override
-  Future<bool> hasCompletedProfile(String uid) async {
-    seenUid = uid;
-    return completed;
-  }
+Person _person(String id) {
+  return Person(
+    id: id,
+    username: 'ada',
+    displayName: 'ada',
+    age: 28,
+    gender: 'Woman',
+    city: 'Lahore',
+    bio: 'A short bio for the form.',
+    interests: const ['Coffee'],
+    preferences: const ['Dating'],
+    hue: 12,
+    isSample: false,
+  );
 }

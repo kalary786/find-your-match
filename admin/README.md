@@ -1,5 +1,7 @@
 # Admin panel
 
-The Next.js admin panel is not part of this phase.
+The admin panel is the PHP site in `server/admin/`. It is not a separate Next.js app, and it does not use Firebase.
 
-It will be a separate app with email and password sign-in for admins only. Admin rights come from a Firebase custom claim set outside the mobile app. The mobile app must never contain admin credentials.
+Sign in with the email and password created by `server/install.php`. That password stays on the server. The Android app does not contain it.
+
+From the panel you can block or delete users, delete chats, review reports, and turn banner ads on or off for Discover, Search, and Matches.

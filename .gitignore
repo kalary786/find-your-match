@@ -1,4 +1,4 @@
-# Secrets and local Firebase files
+# Secrets and local server files
 
 google-services.json
 GoogleService-Info.plist
@@ -9,3 +9,9 @@ serviceAccount*.json
 firebase-debug.log
 ui-debug.log
 .firebase/
+
+server/config.php
+server/uploads/photos/*
+server/uploads/ads/*
+!server/uploads/photos/.htaccess
+!server/uploads/ads/.htaccess
