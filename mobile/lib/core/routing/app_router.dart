@@ -5,6 +5,8 @@ import 'package:find_your_match/core/widgets/error_state.dart';
 import 'package:find_your_match/features/chat/chat_room_page.dart';
 import 'package:find_your_match/features/chat/chats_page.dart';
 import 'package:find_your_match/features/discover/discover_page.dart';
+import 'package:find_your_match/features/legal/legal_copy.dart';
+import 'package:find_your_match/features/legal/legal_page.dart';
 import 'package:find_your_match/features/discover/user_details_page.dart';
 import 'package:find_your_match/features/matches/matches_page.dart';
 import 'package:find_your_match/features/onboarding/account_notice_page.dart';
@@ -147,6 +149,15 @@ final routerProvider = Provider<GoRouter>((ref) {
         parentNavigatorKey: rootKey,
         builder: (context, state) {
           return ReportUserPage(userId: state.pathParameters['id']!);
+        },
+      ),
+      GoRoute(
+        path: '/legal/:doc',
+        parentNavigatorKey: rootKey,
+        builder: (context, state) {
+          return LegalPage(
+            document: LegalDocument.fromSlug(state.pathParameters['doc']),
+          );
         },
       ),
       GoRoute(

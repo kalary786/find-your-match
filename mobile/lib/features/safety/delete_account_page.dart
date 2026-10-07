@@ -1,3 +1,4 @@
+import 'package:find_your_match/core/api/api_config.dart';
 import 'package:find_your_match/core/routing/app_routes.dart';
 import 'package:find_your_match/core/widgets/primary_button.dart';
 import 'package:find_your_match/features/profile/account_failure.dart';
@@ -56,7 +57,7 @@ class _DeleteAccountPageState extends ConsumerState<DeleteAccountPage> {
           ),
           const SizedBox(height: 12),
           Text(
-            'Hiding a profile is not deletion. After deletion the email can be used to register again, as a new account. A public web page is still required before a Play release for people who no longer have the app.',
+            'Hiding a profile is not deletion. After deletion the email can be used to register again, as a new account. The same deletion is available in a browser at ${ApiConfig.baseUrl}/delete-account.php if you still know the email and password.',
             style: theme.textTheme.bodyLarge,
           ),
           const SizedBox(height: 8),

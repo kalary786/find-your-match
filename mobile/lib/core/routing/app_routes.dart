@@ -16,6 +16,9 @@ abstract final class AppRoutes {
   static const settings = '/settings';
   static const blocked = '/settings/blocked';
   static const deleteAccount = '/settings/delete-account';
+  static const terms = '/legal/terms';
+  static const privacy = '/legal/privacy';
+  static const guidelines = '/legal/guidelines';
 
   static String person(String id) => '/people/$id';
   static String conversation(String id) => '/conversation/$id';

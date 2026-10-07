@@ -1,4 +1,5 @@
 import 'package:find_your_match/core/routing/app_routes.dart';
+import 'package:find_your_match/core/session/session_controller.dart';
 import 'package:find_your_match/core/theme/theme_mode_controller.dart';
 import 'package:find_your_match/features/profile/account_failure.dart';
 import 'package:find_your_match/features/social/social_store.dart';
@@ -84,6 +85,34 @@ class SettingsPage extends ConsumerWidget {
           ),
           const Divider(),
           Text(
+            'Legal',
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.description_outlined),
+            title: const Text('Terms'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push(AppRoutes.terms),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.privacy_tip_outlined),
+            title: const Text('Privacy'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push(AppRoutes.privacy),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.groups_outlined),
+            title: const Text('Community guidelines'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push(AppRoutes.guidelines),
+          ),
+          const Divider(),
+          Text(
             'Account',
             style: theme.textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w700,
@@ -99,6 +128,13 @@ class SettingsPage extends ConsumerWidget {
           const SizedBox(height: 8),
           ListTile(
             contentPadding: EdgeInsets.zero,
+            key: const Key('sign-out-tile'),
+            leading: const Icon(Icons.logout),
+            title: const Text('Sign out'),
+            onTap: () => _signOut(context, ref),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
             key: const Key('delete-account-tile'),
             leading: Icon(Icons.delete_outline, color: theme.colorScheme.error),
             title: Text(
@@ -111,6 +147,32 @@ class SettingsPage extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _signOut(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Sign out'),
+          content: const Text(
+            'Sign out of this phone? Your profile stays on the website.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Sign out'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true || !context.mounted) return;
+    await ref.read(sessionControllerProvider.notifier).signOut();
   }
 
   Future<void> _privacy(

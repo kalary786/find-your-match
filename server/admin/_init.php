@@ -4,9 +4,12 @@ declare(strict_types=1);
 
 require dirname(__DIR__) . '/lib/bootstrap.php';
 
+$https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+    || (($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https');
 session_set_cookie_params([
     'httponly' => true,
     'samesite' => 'Lax',
+    'secure' => $https,
     'path' => '/',
 ]);
 session_start();

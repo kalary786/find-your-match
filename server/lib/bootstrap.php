@@ -300,6 +300,16 @@ function load_profile(int $userId): ?array
     return $row ?: null;
 }
 
+function delete_user_account(int $userId): void
+{
+    $profile = load_profile($userId);
+    if ($profile) {
+        unlink_public($profile['photo_path'] ?? null);
+    }
+    $statement = db()->prepare('DELETE FROM users WHERE id = ?');
+    $statement->execute([$userId]);
+}
+
 function touch_active(int $userId): void
 {
     $statement = db()->prepare('UPDATE profiles SET last_active_at = ? WHERE user_id = ?');
@@ -334,7 +344,7 @@ function blocked_either(int $a, int $b): bool
     return (bool) $statement->fetchColumn();
 }
 
-function require_visible_peer(int $me, int $peerId): array
+function require_visible_peer(int $me, int $peerId, bool $allowHidden = false): array
 {
     if ($peerId === $me) {
         fail(400, 'invalid-argument', 'That profile is not available.');
@@ -344,7 +354,8 @@ function require_visible_peer(int $me, int $peerId): array
     );
     $statement->execute([$peerId]);
     $row = $statement->fetch();
-    if (!$row || (int) $row['admin_blocked'] === 1 || (int) $row['hidden'] === 1 || blocked_either($me, $peerId)) {
+    $hidden = $row && (int) $row['hidden'] === 1;
+    if (!$row || (int) $row['admin_blocked'] === 1 || (!$allowHidden && $hidden) || blocked_either($me, $peerId)) {
         fail(404, 'not-found', 'That profile is not available.');
     }
     return $row;

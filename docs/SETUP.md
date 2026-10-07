@@ -54,4 +54,11 @@ Policy pages to re-read at submission time:
 - https://support.google.com/googleplay/android-developer/answer/13327111
 - https://support.google.com/googleplay/android-developer/answer/16838200
 
-Legal pages inside the app are not written yet. Do not ship until Terms, Privacy, and Community Guidelines exist and you have had them reviewed for the places you distribute the app.
+Terms, Privacy, and Community Guidelines are in the app under Settings, and on the website:
+
+- `https://bngames.shop/server/terms.php`
+- `https://bngames.shop/server/privacy.php`
+- `https://bngames.shop/server/guidelines.php`
+- `https://bngames.shop/server/delete-account.php`
+
+Upload the new files in `server/` before those addresses will open. Have the pages reviewed before you submit the app. They describe how this build works. They are not a compliance sign-off.

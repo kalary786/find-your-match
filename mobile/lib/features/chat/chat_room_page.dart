@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:find_your_match/core/routing/app_routes.dart';
 import 'package:find_your_match/features/preview/preview_models.dart';
 import 'package:find_your_match/features/profile/account_failure.dart';
@@ -17,17 +19,25 @@ class ChatRoomPage extends ConsumerStatefulWidget {
 
 class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
   final _text = TextEditingController();
+  Timer? _refresh;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(socialControllerProvider.notifier).openChat(widget.userId);
+      if (!mounted) return;
+      final social = ref.read(socialControllerProvider.notifier);
+      social.openChat(widget.userId);
+      if (ref.read(socialSeedProvider) != null) return;
+      _refresh = Timer.periodic(const Duration(seconds: 4), (_) {
+        social.refreshMessages(widget.userId);
+      });
     });
   }
 
   @override
   void dispose() {
+    _refresh?.cancel();
     _text.dispose();
     super.dispose();
   }
@@ -104,10 +114,11 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
         children: [
           Expanded(
             child: ListView.builder(
+              reverse: true,
               padding: const EdgeInsets.all(16),
               itemCount: messages.length,
               itemBuilder: (context, index) {
-                final message = messages[index];
+                final message = messages[messages.length - 1 - index];
                 final mine = message.fromMe;
                 return Align(
                   alignment: mine

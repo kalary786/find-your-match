@@ -68,6 +68,16 @@ void main() {
       tester
           .widget<FilledButton>(find.widgetWithText(FilledButton, 'Continue'))
           .onPressed,
+      isNull,
+    );
+
+    await tester.ensureVisible(find.byKey(const Key('agree-legal')));
+    await tester.tap(find.byKey(const Key('agree-legal')));
+    await tester.pump();
+    expect(
+      tester
+          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Continue'))
+          .onPressed,
       isNotNull,
     );
 

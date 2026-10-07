@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:find_your_match/core/routing/app_routes.dart';
 import 'package:find_your_match/core/widgets/empty_state.dart';
 import 'package:find_your_match/core/widgets/person_avatar.dart';
@@ -6,11 +8,38 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-class ChatsPage extends ConsumerWidget {
+class ChatsPage extends ConsumerStatefulWidget {
   const ChatsPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ChatsPage> createState() => _ChatsPageState();
+}
+
+class _ChatsPageState extends ConsumerState<ChatsPage> {
+  Timer? _refresh;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final social = ref.read(socialControllerProvider.notifier);
+      social.refreshInbox();
+      if (ref.read(socialSeedProvider) != null) return;
+      _refresh = Timer.periodic(const Duration(seconds: 8), (_) {
+        social.refreshInbox();
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _refresh?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final chats = ref.watch(socialControllerProvider).chats;
     return Scaffold(
       key: const Key('chats-page'),

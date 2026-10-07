@@ -14,11 +14,12 @@ String? redirectForSession(SessionState session, String location) {
     case SessionStatus.ready:
       final onboarding = location == AppRoutes.onboarding ||
           location.startsWith('${AppRoutes.onboarding}/');
+      final legal = location == '/legal' || location.startsWith('/legal/');
       final leavingGate = location == AppRoutes.splash ||
           location == AppRoutes.setup ||
           location == AppRoutes.error;
       if (!session.hasProfile) {
-        return onboarding ? null : AppRoutes.onboarding;
+        return (onboarding || legal) ? null : AppRoutes.onboarding;
       }
       if (onboarding || leavingGate) return AppRoutes.discover;
       return null;

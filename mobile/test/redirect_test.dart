@@ -31,6 +31,13 @@ void main() {
     );
   });
 
+  test('legal pages stay open while a profile is still missing', () {
+    expect(
+      redirectForSession(readyWithoutProfile, AppRoutes.terms),
+      isNull,
+    );
+  });
+
   test('a signed-in user without a profile opens onboarding', () {
     expect(
       redirectForSession(readyWithoutProfile, AppRoutes.discover),

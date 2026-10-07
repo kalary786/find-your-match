@@ -18,6 +18,7 @@ class _AccountNoticePageState extends ConsumerState<AccountNoticePage> {
   final _email = TextEditingController();
   final _password = TextEditingController();
   var _login = false;
+  var _agreed = false;
   var _busy = false;
   String? _error;
 
@@ -33,6 +34,7 @@ class _AccountNoticePageState extends ConsumerState<AccountNoticePage> {
     return email.contains('@') &&
         email.contains('.') &&
         _password.text.length >= 8 &&
+        (_login || _agreed) &&
         !_busy;
   }
 
@@ -108,6 +110,41 @@ class _AccountNoticePageState extends ConsumerState<AccountNoticePage> {
               ),
             ),
           ],
+          if (!_login) ...[
+            const SizedBox(height: 8),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Checkbox(
+                  key: const Key('agree-legal'),
+                  value: _agreed,
+                  onChanged: _busy
+                      ? null
+                      : (value) => setState(() => _agreed = value ?? false),
+                ),
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        const Text('I agree to the '),
+                        _LegalLink(label: 'Terms', route: AppRoutes.terms),
+                        const Text(', '),
+                        _LegalLink(label: 'Privacy', route: AppRoutes.privacy),
+                        const Text(', and '),
+                        _LegalLink(
+                          label: 'Community Guidelines',
+                          route: AppRoutes.guidelines,
+                        ),
+                        const Text('.'),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
           const SizedBox(height: 8),
           TextButton(
             onPressed: _busy
@@ -123,6 +160,33 @@ class _AccountNoticePageState extends ConsumerState<AccountNoticePage> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _LegalLink extends StatelessWidget {
+  const _LegalLink({required this.label, required this.route});
+
+  final String label;
+  final String route;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return TextButton(
+      style: TextButton.styleFrom(
+        padding: const EdgeInsets.symmetric(horizontal: 2),
+        minimumSize: Size.zero,
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      ),
+      onPressed: () => context.push(route),
+      child: Text(
+        label,
+        style: theme.textTheme.bodyMedium?.copyWith(
+          color: theme.colorScheme.primary,
+          fontWeight: FontWeight.w700,
+        ),
       ),
     );
   }

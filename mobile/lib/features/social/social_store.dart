@@ -181,10 +181,40 @@ class SocialController extends Notifier<SocialState> {
     state = state.copyWith(searchResults: results, filter: filter);
   }
 
-  Future<void> openChat(String userId) async {
-    if (state.messages.containsKey(userId)) return;
-    final messages = await ref.read(matchApiProvider).messages(userId);
-    state = state.copyWith(messages: {...state.messages, userId: messages});
+  Future<void> openChat(String userId) {
+    return refreshMessages(userId);
+  }
+
+  Future<void> refreshMessages(String userId) async {
+    if (ref.read(socialSeedProvider) != null) return;
+    try {
+      final incoming = await ref.read(matchApiProvider).messages(userId);
+      final local = state.messages[userId] ?? const <ChatMessage>[];
+      final known = incoming.map((message) => message.id).toSet();
+      final pending = [
+        for (final message in local)
+          if (!known.contains(message.id)) message,
+      ];
+      final merged = [...incoming, ...pending];
+      state = state.copyWith(
+        messages: {...state.messages, userId: merged},
+        chats: _withLatest(userId, merged.isEmpty ? null : merged.last.text),
+      );
+    } on AccountFailure {
+      // Keep the thread that is already on screen.
+    }
+  }
+
+  Future<void> refreshInbox() async {
+    if (ref.read(socialSeedProvider) != null) return;
+    try {
+      final api = ref.read(matchApiProvider);
+      final matches = await api.matches();
+      final chats = await api.chats();
+      state = state.copyWith(matches: matches, chats: chats);
+    } on AccountFailure {
+      // Keep the inbox that is already on screen.
+    }
   }
 
   Future<void> sendMessage(String userId, String text) async {
@@ -200,7 +230,23 @@ class SocialController extends Notifier<SocialState> {
         ...state.messages,
         userId: [...existing, message],
       },
+      chats: _withLatest(userId, message.text),
     );
+  }
+
+  List<ChatThread> _withLatest(String userId, String? text) {
+    if (text == null) return state.chats;
+    ChatThread? updated;
+    final rest = <ChatThread>[];
+    for (final chat in state.chats) {
+      if (chat.person.id == userId) {
+        updated = ChatThread(person: chat.person, lastMessage: text);
+      } else {
+        rest.add(chat);
+      }
+    }
+    if (updated == null) return state.chats;
+    return [updated, ...rest];
   }
 
   Future<void> block(String userId) async {

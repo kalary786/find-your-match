@@ -221,13 +221,7 @@ function set_privacy(): void
 function delete_account(): void
 {
     $user = current_user();
-    $userId = (int) $user['id'];
-    $profile = load_profile($userId);
-    if ($profile) {
-        unlink_public($profile['photo_path'] ?? null);
-    }
-    $statement = db()->prepare('DELETE FROM users WHERE id = ?');
-    $statement->execute([$userId]);
+    delete_user_account((int) $user['id']);
     json_out(['ok' => true]);
 }
 
@@ -371,7 +365,9 @@ function list_chats(): void
              WHERE (b.blocker_id = ? AND b.blocked_id = p.user_id)
                 OR (b.blocker_id = p.user_id AND b.blocked_id = ?)
            )
-         ORDER BY c.id DESC'
+         ORDER BY (
+           SELECT MAX(m.id) FROM messages m WHERE m.conversation_id = c.id
+         ) DESC, c.id DESC'
     );
     $statement->execute([$userId, $userId, $userId, $userId, $userId]);
     $chats = [];
@@ -399,17 +395,20 @@ function list_messages(): void
 {
     $userId = (int) current_user()['id'];
     $peerId = (int) ($_GET['userId'] ?? request_data()['userId'] ?? 0);
-    require_visible_peer($userId, $peerId);
+    require_visible_peer($userId, $peerId, true);
     $conversation = conversation_with($userId, $peerId);
     if (!$conversation) {
         fail(404, 'not-found', 'Chat opens after a match.');
     }
     $statement = db()->prepare(
-        'SELECT id, sender_id, body, created_at FROM messages WHERE conversation_id = ? ORDER BY id ASC LIMIT 200'
+        'SELECT id, sender_id, body, created_at FROM messages
+         WHERE conversation_id = ?
+         ORDER BY id DESC
+         LIMIT 200'
     );
     $statement->execute([(int) $conversation['id']]);
     $messages = [];
-    foreach ($statement->fetchAll() as $row) {
+    foreach (array_reverse($statement->fetchAll()) as $row) {
         $messages[] = message_payload($row, $userId);
     }
     json_out(['messages' => $messages]);
@@ -425,7 +424,7 @@ function send_message(): void
     if ($text === '' || $length > 1000) {
         fail(400, 'invalid-argument', 'Write a message up to 1000 characters.');
     }
-    require_visible_peer($userId, $peerId);
+    require_visible_peer($userId, $peerId, true);
     $conversation = conversation_with($userId, $peerId);
     if (!$conversation) {
         fail(404, 'not-found', 'Chat opens after a match.');
