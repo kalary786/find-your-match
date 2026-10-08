@@ -17,6 +17,7 @@ try {
         'setHidden' => set_hidden(),
         'setPrivacy' => set_privacy(),
         'deleteAccount' => delete_account(),
+        'changePassword' => change_password(),
         'discover' => list_discover(),
         'search' => list_search(),
         'like' => swipe(true),
@@ -25,6 +26,7 @@ try {
         'chats' => list_chats(),
         'messages' => list_messages(),
         'send' => send_message(),
+        'unmatch' => unmatch_user(),
         'block' => block_user(),
         'unblock' => unblock_user(),
         'blocked' => list_blocked(),
@@ -33,7 +35,7 @@ try {
         default => fail(404, 'not-found', 'That action is not available.'),
     };
 } catch (PDOException $error) {
-    fail(500, 'unavailable', 'The database could not complete that request.');
+    fail(500, 'setup', 'The database could not complete that request. Check config.php, then open install.php once.');
 } catch (RuntimeException $error) {
     fail(400, 'invalid-argument', $error->getMessage());
 }
@@ -222,6 +224,26 @@ function delete_account(): void
 {
     $user = current_user();
     delete_user_account((int) $user['id']);
+    json_out(['ok' => true]);
+}
+
+function change_password(): void
+{
+    $user = current_user();
+    $input = request_data();
+    $current = (string) ($input['currentPassword'] ?? '');
+    $next = (string) ($input['password'] ?? '');
+    if (strlen($next) < 8) {
+        fail(400, 'invalid-argument', 'Use a password of at least 8 characters.');
+    }
+    $statement = db()->prepare('SELECT password_hash FROM users WHERE id = ? LIMIT 1');
+    $statement->execute([(int) $user['id']]);
+    $hash = (string) $statement->fetchColumn();
+    if ($hash === '' || !password_verify($current, $hash)) {
+        fail(400, 'invalid-argument', 'The current password is incorrect.');
+    }
+    $update = db()->prepare('UPDATE users SET password_hash = ? WHERE id = ?');
+    $update->execute([password_hash($next, PASSWORD_DEFAULT), (int) $user['id']]);
     json_out(['ok' => true]);
 }
 
@@ -443,6 +465,32 @@ function send_message(): void
             'timeLabel' => (new DateTimeImmutable($stamp))->format('g:i a'),
         ],
     ]);
+}
+
+function unmatch_user(): void
+{
+    $userId = (int) current_user()['id'];
+    $peerId = (int) (request_data()['userId'] ?? 0);
+    if ($peerId <= 0 || $peerId === $userId) {
+        fail(400, 'invalid-argument', 'That match cannot be removed.');
+    }
+    $low = min($userId, $peerId);
+    $high = max($userId, $peerId);
+    $match = db()->prepare('SELECT id FROM matches WHERE user_low = ? AND user_high = ? LIMIT 1');
+    $match->execute([$low, $high]);
+    $matchId = (int) $match->fetchColumn();
+    if ($matchId <= 0) {
+        fail(404, 'not-found', 'That match is already gone.');
+    }
+    $delete = db()->prepare('DELETE FROM matches WHERE id = ?');
+    $delete->execute([$matchId]);
+    $swipes = db()->prepare(
+        'DELETE FROM swipes
+         WHERE (from_user_id = ? AND to_user_id = ?)
+            OR (from_user_id = ? AND to_user_id = ?)'
+    );
+    $swipes->execute([$userId, $peerId, $peerId, $userId]);
+    json_out(['ok' => true]);
 }
 
 function block_user(): void

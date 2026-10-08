@@ -16,6 +16,7 @@ void main() {
       ProviderScope(
         overrides: [
           splashHoldProvider.overrideWithValue(Duration.zero),
+          apiBaseUrlProvider.overrideWithValue(''),
         ],
         child: const FindYourMatchApp(),
       ),
@@ -150,6 +151,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Block'), findsOneWidget);
     expect(find.text('Report'), findsOneWidget);
+    expect(find.text('Unmatch'), findsNothing);
 
     await tester.tap(find.byKey(const Key('report-user')));
     await tester.pumpAndSettle();
@@ -198,6 +200,77 @@ void main() {
     await tester.tap(find.byKey(const Key('confirm-delete')));
     await tester.pumpAndSettle();
     expect(find.text('Step 1 of 4'), findsOneWidget);
+  });
+
+  testWidgets('a match can be removed and the password can be changed', (
+    tester,
+  ) async {
+    tester.view.physicalSize = const Size(800, 2000);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    const leila = Person(
+      id: '3',
+      username: 'leila',
+      displayName: 'Leila',
+      age: 26,
+      gender: 'Woman',
+      city: 'Mumbai',
+      bio: 'Morning runs and neighborhood coffee.',
+      interests: ['Fitness', 'Coffee'],
+      preferences: ['Dating'],
+      hue: 28,
+      isSample: false,
+    );
+    final api = FakeMatchApi();
+    await _pumpSeeded(
+      tester,
+      const SessionState.ready(uid: 'user-1', hasProfile: true),
+      api: api,
+      social: SocialState(
+        matches: [leila],
+        chats: [ChatThread(person: leila, lastMessage: 'See you Saturday')],
+        loaded: true,
+      ),
+    );
+
+    await tester.tap(find.text('Matches'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Leila'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('unmatch-user')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Unmatch'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Match removed.'), findsOneWidget);
+    expect(find.text('Leila'), findsNothing);
+
+    await tester.tap(find.text('Profile'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('settings-button')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('change-password-tile')));
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byKey(const Key('current-password')),
+      'old-pass',
+    );
+    await tester.enterText(
+      find.byKey(const Key('new-password')),
+      'new-password',
+    );
+    await tester.enterText(
+      find.byKey(const Key('confirm-password')),
+      'new-password',
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('save-password')));
+    await tester.pumpAndSettle();
+
+    expect(api.changedPassword, 'new-password');
+    expect(find.text('Current password'), findsNothing);
   });
 }
 

@@ -41,20 +41,25 @@ class FakeMatchApi implements MatchApi {
   @override
   Future<void> logout() async {}
 
+  String? changedPassword;
+
   @override
   Future<void> deleteAccount() async {}
+
+  @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String password,
+  }) async {
+    changedPassword = password;
+  }
 
   @override
   Future<ChatMessage> sendMessage({
     required String userId,
     required String text,
   }) async {
-    return ChatMessage(
-      id: 'sent',
-      fromMe: true,
-      text: text,
-      timeLabel: 'Now',
-    );
+    return ChatMessage(id: 'sent', fromMe: true, text: text, timeLabel: 'Now');
   }
 
   @override
@@ -89,6 +94,9 @@ class FakeMatchApi implements MatchApi {
 
   @override
   Future<void> pass(String userId) => _missing();
+
+  @override
+  Future<void> unmatch(String userId) async {}
 
   @override
   Future<List<Person>> matches() => _missing();

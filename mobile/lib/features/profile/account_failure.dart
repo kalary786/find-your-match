@@ -19,9 +19,10 @@ class AccountFailure implements Exception {
       case 'unavailable':
       case 'deadline-exceeded':
       case 'network-request-failed':
-        return const AccountFailure(
+        return AccountFailure(
           AccountFailureKind.offline,
-          'You appear to be offline. Nothing was saved. Connect and try again.',
+          message ??
+              'You appear to be offline. Nothing was saved. Connect and try again.',
         );
       case 'already-exists':
         return AccountFailure(

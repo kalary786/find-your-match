@@ -63,14 +63,18 @@ class SettingsPage extends ConsumerWidget {
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Show online status'),
-            subtitle: const Text('Off until you turn it on. Saved on your account.'),
+            subtitle: const Text(
+              'Off until you turn it on. Saved on your account.',
+            ),
             value: social.showOnline,
             onChanged: (value) => _privacy(context, ref, online: value),
           ),
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
             title: const Text('Show last active'),
-            subtitle: const Text('Off until you turn it on. Saved on your account.'),
+            subtitle: const Text(
+              'Off until you turn it on. Saved on your account.',
+            ),
             value: social.showLastActive,
             onChanged: (value) => _privacy(context, ref, active: value),
           ),
@@ -128,6 +132,13 @@ class SettingsPage extends ConsumerWidget {
           const SizedBox(height: 8),
           ListTile(
             contentPadding: EdgeInsets.zero,
+            key: const Key('change-password-tile'),
+            leading: const Icon(Icons.password_outlined),
+            title: const Text('Change password'),
+            onTap: () => _changePassword(context, ref),
+          ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
             key: const Key('sign-out-tile'),
             leading: const Icon(Icons.logout),
             title: const Text('Sign out'),
@@ -147,6 +158,26 @@ class SettingsPage extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _changePassword(BuildContext context, WidgetRef ref) async {
+    final saved = await showDialog<bool>(
+      context: context,
+      builder: (context) => _ChangePasswordDialog(
+        onSubmit: (currentPassword, password) {
+          return ref
+              .read(matchApiProvider)
+              .changePassword(
+                currentPassword: currentPassword,
+                password: password,
+              );
+        },
+      ),
+    );
+    if (saved != true || !context.mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Password updated.')));
   }
 
   Future<void> _signOut(BuildContext context, WidgetRef ref) async {
@@ -190,9 +221,111 @@ class SettingsPage extends ConsumerWidget {
       }
     } on AccountFailure catch (error) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     }
+  }
+}
+
+class _ChangePasswordDialog extends StatefulWidget {
+  const _ChangePasswordDialog({required this.onSubmit});
+
+  final Future<void> Function(String currentPassword, String password) onSubmit;
+
+  @override
+  State<_ChangePasswordDialog> createState() => _ChangePasswordDialogState();
+}
+
+class _ChangePasswordDialogState extends State<_ChangePasswordDialog> {
+  final _current = TextEditingController();
+  final _next = TextEditingController();
+  final _confirm = TextEditingController();
+  var _saving = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _current.dispose();
+    _next.dispose();
+    _confirm.dispose();
+    super.dispose();
+  }
+
+  bool get _ready =>
+      _current.text.isNotEmpty &&
+      _next.text.length >= 8 &&
+      _next.text == _confirm.text;
+
+  Future<void> _save() async {
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
+    try {
+      await widget.onSubmit(_current.text, _next.text);
+      if (mounted) Navigator.pop(context, true);
+    } on AccountFailure catch (error) {
+      if (mounted) {
+        setState(() {
+          _saving = false;
+          _error = error.message;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('Change password'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          TextField(
+            key: const Key('current-password'),
+            controller: _current,
+            obscureText: true,
+            autofocus: true,
+            decoration: const InputDecoration(labelText: 'Current password'),
+            onChanged: (_) => setState(() {}),
+          ),
+          TextField(
+            key: const Key('new-password'),
+            controller: _next,
+            obscureText: true,
+            decoration: const InputDecoration(labelText: 'New password'),
+            onChanged: (_) => setState(() {}),
+          ),
+          TextField(
+            key: const Key('confirm-password'),
+            controller: _confirm,
+            obscureText: true,
+            decoration: const InputDecoration(
+              labelText: 'Confirm new password',
+            ),
+            onChanged: (_) => setState(() {}),
+          ),
+          if (_error != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              _error!,
+              style: TextStyle(color: Theme.of(context).colorScheme.error),
+            ),
+          ],
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.pop(context, false),
+          child: const Text('Cancel'),
+        ),
+        TextButton(
+          key: const Key('save-password'),
+          onPressed: !_ready || _saving ? null : _save,
+          child: const Text('Save'),
+        ),
+      ],
+    );
   }
 }

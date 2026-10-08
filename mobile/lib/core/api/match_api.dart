@@ -54,10 +54,7 @@ abstract class MatchApi {
     required String password,
   });
 
-  Future<AuthSession> login({
-    required String email,
-    required String password,
-  });
+  Future<AuthSession> login({required String email, required String password});
 
   Future<void> logout();
 
@@ -74,6 +71,11 @@ abstract class MatchApi {
 
   Future<void> deleteAccount();
 
+  Future<void> changePassword({
+    required String currentPassword,
+    required String password,
+  });
+
   Future<List<Person>> discover();
 
   Future<List<Person>> search({
@@ -84,6 +86,8 @@ abstract class MatchApi {
   Future<bool> like(String userId);
 
   Future<void> pass(String userId);
+
+  Future<void> unmatch(String userId);
 
   Future<List<Person>> matches();
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:find_your_match/core/api/match_api.dart';
@@ -49,10 +50,7 @@ class HttpMatchApi implements MatchApi {
   }
 
   @override
-  Future<AuthSession> login({
-    required String email,
-    required String password,
-  }) {
+  Future<AuthSession> login({required String email, required String password}) {
     return _auth('login', email: email, password: password);
   }
 
@@ -131,6 +129,20 @@ class HttpMatchApi implements MatchApi {
   }
 
   @override
+  Future<void> changePassword({
+    required String currentPassword,
+    required String password,
+  }) async {
+    _body(
+      await _send(
+        'changePassword',
+        method: 'POST',
+        json: {'currentPassword': currentPassword, 'password': password},
+      ),
+    );
+  }
+
+  @override
   Future<List<Person>> discover() async {
     final body = _body(await _send('discover'));
     return _people(body['people']);
@@ -169,6 +181,11 @@ class HttpMatchApi implements MatchApi {
   @override
   Future<void> pass(String userId) async {
     _body(await _send('pass', method: 'POST', json: {'userId': userId}));
+  }
+
+  @override
+  Future<void> unmatch(String userId) async {
+    _body(await _send('unmatch', method: 'POST', json: {'userId': userId}));
   }
 
   @override
@@ -335,13 +352,22 @@ class HttpMatchApi implements MatchApi {
       final headers = await _headers(json: json != null, withAuth: withAuth);
       final uri = _uri(action, query);
       if (method == 'POST') {
-        return await _client.post(
-          uri,
-          headers: headers,
-          body: json == null ? null : jsonEncode(json),
-        );
+        return await _client
+            .post(
+              uri,
+              headers: headers,
+              body: json == null ? null : jsonEncode(json),
+            )
+            .timeout(const Duration(seconds: 20));
       }
-      return await _client.get(uri, headers: headers);
+      return await _client
+          .get(uri, headers: headers)
+          .timeout(const Duration(seconds: 20));
+    } on TimeoutException {
+      throw const AccountFailure(
+        AccountFailureKind.offline,
+        'The website did not answer. Check the database in config.php, then try again.',
+      );
     } on http.ClientException {
       throw const AccountFailure(
         AccountFailureKind.offline,
@@ -369,9 +395,9 @@ class HttpMatchApi implements MatchApi {
     final root = baseUrl.endsWith('/')
         ? baseUrl.substring(0, baseUrl.length - 1)
         : baseUrl;
-    return Uri.parse('$root/api/index.php').replace(
-      queryParameters: {'action': action, ...?query},
-    );
+    return Uri.parse(
+      '$root/api/index.php',
+    ).replace(queryParameters: {'action': action, ...?query});
   }
 
   Map<String, dynamic> _body(http.Response response) {

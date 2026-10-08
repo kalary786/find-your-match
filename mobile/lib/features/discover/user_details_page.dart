@@ -63,12 +63,19 @@ class UserDetailsPage extends ConsumerWidget {
           const SizedBox(height: 8),
           InterestWrap(labels: person.preferences),
           const SizedBox(height: 24),
-          if (matched)
+          if (matched) ...[
             PrimaryButton(
               label: 'Open chat',
               onPressed: () => context.push(AppRoutes.conversation(person.id)),
-            )
-          else
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton(
+              key: const Key('unmatch-user'),
+              onPressed: () =>
+                  _confirmUnmatch(context, ref, person.displayName, person.id),
+              child: const Text('Unmatch'),
+            ),
+          ] else
             PrimaryButton(
               label: 'Like',
               onPressed: () async {
@@ -83,9 +90,9 @@ class UserDetailsPage extends ConsumerWidget {
                   }
                 } on AccountFailure catch (error) {
                   if (!context.mounted) return;
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(error.message)),
-                  );
+                  ScaffoldMessenger.of(
+                    context,
+                  ).showSnackBar(SnackBar(content: Text(error.message)));
                 }
               },
             ),
@@ -117,6 +124,49 @@ class UserDetailsPage extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _confirmUnmatch(
+    BuildContext context,
+    WidgetRef ref,
+    String name,
+    String id,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text('Unmatch $name?'),
+          content: const Text(
+            'The match and its chat are removed for both of you. You can see this profile in Discover again.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancel'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Unmatch'),
+            ),
+          ],
+        );
+      },
+    );
+    if (confirmed != true || !context.mounted) return;
+    try {
+      await ref.read(socialControllerProvider.notifier).unmatch(id);
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Match removed.')));
+      context.pop();
+    } on AccountFailure catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
+    }
   }
 
   Future<void> _confirmBlock(
@@ -152,9 +202,9 @@ class UserDetailsPage extends ConsumerWidget {
       if (context.mounted) context.pop();
     } on AccountFailure catch (error) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(error.message)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(error.message)));
     }
   }
 }

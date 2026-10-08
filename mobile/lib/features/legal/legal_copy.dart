@@ -55,7 +55,7 @@ extension LegalDocumentText on LegalDocument {
         ),
         LegalSection(
           'Your account',
-          'You register with an email and a password. The same login works on another phone. You are responsible for keeping the password private.',
+          'You register with an email and a password. You can change the password in Settings. The same login works on another phone. You are responsible for keeping the password private.',
         ),
         LegalSection(
           'Your profile',
@@ -63,11 +63,11 @@ extension LegalDocumentText on LegalDocument {
         ),
         LegalSection(
           'Matching and chat',
-          'A like stays private until the other person likes you back. Text chat opens only after a mutual match. There is no promise that you will receive likes, matches, or replies.',
+          'A like stays private until the other person likes you back. Text chat opens only after a mutual match. Unmatching removes that match and its chat for both people. There is no promise that you will receive likes, matches, or replies.',
         ),
         LegalSection(
           'Safety',
-          'You can block or report another person. An admin can block an account, delete a chat, or delete an account. Blocking signs that person out and hides them.',
+          'You can unmatch, block, or report another person. An admin can block an account, delete a chat, or delete an account. An admin block signs that person out and hides them.',
         ),
         LegalSection(
           'Ending use',
@@ -85,7 +85,7 @@ extension LegalDocumentText on LegalDocument {
         ),
         LegalSection(
           'Activity',
-          'Likes and passes, matches, chat messages, blocks, and reports. Online status and last active time are saved only if you turn them on. Both are off until you do.',
+          'Likes and passes, matches, chat messages, blocks, and reports. Unmatching removes that match and its chat. Online status and last active time are saved only if you turn them on. Both are off until you do.',
         ),
         LegalSection(
           'Who can see it',

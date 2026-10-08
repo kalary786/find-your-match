@@ -11,7 +11,7 @@ render_public_page('Privacy', <<<'HTML'
 <h2>Profile</h2>
 <p>Username, date of birth, age, gender, city, bio, interests, preferences, and photo. Age is calculated on the server from the date of birth.</p>
 <h2>Activity</h2>
-<p>Likes and passes, matches, chat messages, blocks, and reports. If you turn them on, online status and last active time are saved too. Both are off until you turn them on.</p>
+<p>Likes and passes, matches, chat messages, blocks, and reports. Unmatching removes that match and its chat. If you turn them on, online status and last active time are saved too. Both are off until you turn them on.</p>
 <h2>Who can see it</h2>
 <p>Other people can see a profile that is not hidden, except people you blocked and people who blocked you. Chat is only between a matched pair. An admin can open users, chats, reports, and ads from the admin panel.</p>
 <h2>Ads</h2>

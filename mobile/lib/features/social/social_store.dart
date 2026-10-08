@@ -122,11 +122,7 @@ class SocialController extends Notifier<SocialState> {
         blocked: blocked,
         showOnline: me?.showOnline ?? state.showOnline,
         showLastActive: me?.showLastActive ?? state.showLastActive,
-        ads: {
-          'discover': discoverAd,
-          'search': searchAd,
-          'matches': matchesAd,
-        },
+        ads: {'discover': discoverAd, 'search': searchAd, 'matches': matchesAd},
         loading: false,
         loaded: true,
         clearError: true,
@@ -147,7 +143,9 @@ class SocialController extends Notifier<SocialState> {
       ],
     );
     if (matched) {
-      state = state.copyWith(matches: await ref.read(matchApiProvider).matches());
+      state = state.copyWith(
+        matches: await ref.read(matchApiProvider).matches(),
+      );
       state = state.copyWith(chats: await ref.read(matchApiProvider).chats());
     }
     return matched;
@@ -163,21 +161,42 @@ class SocialController extends Notifier<SocialState> {
     );
   }
 
+  Future<void> unmatch(String userId) async {
+    await ref.read(matchApiProvider).unmatch(userId);
+    final person = state.personById(userId);
+    final messages = {...state.messages}..remove(userId);
+    state = state.copyWith(
+      discover: [
+        if (person != null && !state.discover.any((item) => item.id == userId))
+          person,
+        for (final item in state.discover)
+          if (item.id != userId) item,
+      ],
+      matches: [
+        for (final item in state.matches)
+          if (item.id != userId) item,
+      ],
+      chats: [
+        for (final chat in state.chats)
+          if (chat.person.id != userId) chat,
+      ],
+      messages: messages,
+    );
+  }
+
   Future<void> search(String query) async {
     state = state.copyWith(query: query);
-    final results = await ref.read(matchApiProvider).search(
-      query: query,
-      filter: state.filter,
-    );
+    final results = await ref
+        .read(matchApiProvider)
+        .search(query: query, filter: state.filter);
     state = state.copyWith(searchResults: results, query: query);
   }
 
   Future<void> setFilter(SearchFilter filter) async {
     state = state.copyWith(filter: filter);
-    final results = await ref.read(matchApiProvider).search(
-      query: state.query,
-      filter: filter,
-    );
+    final results = await ref
+        .read(matchApiProvider)
+        .search(query: state.query, filter: filter);
     state = state.copyWith(searchResults: results, filter: filter);
   }
 
@@ -220,10 +239,9 @@ class SocialController extends Notifier<SocialState> {
   Future<void> sendMessage(String userId, String text) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
-    final message = await ref.read(matchApiProvider).sendMessage(
-      userId: userId,
-      text: trimmed,
-    );
+    final message = await ref
+        .read(matchApiProvider)
+        .sendMessage(userId: userId, text: trimmed);
     final existing = state.messages[userId] ?? const <ChatMessage>[];
     state = state.copyWith(
       messages: {
@@ -287,26 +305,22 @@ class SocialController extends Notifier<SocialState> {
     required String reason,
     required String details,
   }) {
-    return ref.read(matchApiProvider).report(
-      userId: userId,
-      reason: reason,
-      details: details,
-    );
+    return ref
+        .read(matchApiProvider)
+        .report(userId: userId, reason: reason, details: details);
   }
 
   Future<void> setShowOnline(bool value) async {
-    await ref.read(matchApiProvider).setPrivacy(
-      showOnline: value,
-      showLastActive: state.showLastActive,
-    );
+    await ref
+        .read(matchApiProvider)
+        .setPrivacy(showOnline: value, showLastActive: state.showLastActive);
     state = state.copyWith(showOnline: value);
   }
 
   Future<void> setShowLastActive(bool value) async {
-    await ref.read(matchApiProvider).setPrivacy(
-      showOnline: state.showOnline,
-      showLastActive: value,
-    );
+    await ref
+        .read(matchApiProvider)
+        .setPrivacy(showOnline: state.showOnline, showLastActive: value);
     state = state.copyWith(showLastActive: value);
   }
 }

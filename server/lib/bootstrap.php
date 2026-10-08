@@ -46,10 +46,20 @@ function db(): PDO
         $config['db_host'],
         $config['db_name']
     );
-    $pdo = new PDO($dsn, (string) $config['db_user'], (string) $config['db_pass'], [
+    $options = [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
-    ]);
+    ];
+    if (defined('PDO::MYSQL_ATTR_CONNECT_TIMEOUT')) {
+        $options[PDO::MYSQL_ATTR_CONNECT_TIMEOUT] = 8;
+    }
+    try {
+        $pdo = new PDO($dsn, (string) $config['db_user'], (string) $config['db_pass'], $options);
+    } catch (PDOException $error) {
+        throw new RuntimeException(
+            'Could not connect to the database. In config.php use host localhost and the database name, user, and password from hPanel.'
+        );
+    }
     return $pdo;
 }
 

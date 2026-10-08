@@ -48,6 +48,8 @@ try {
     }
 } catch (PDOException $exception) {
     $error = 'Could not prepare the database. Check config.php and that the MySQL database exists.';
+} catch (RuntimeException $exception) {
+    $error = $exception->getMessage();
 }
 ?>
 <!DOCTYPE html>
