@@ -28,14 +28,16 @@ void main() {
     expect(find.text('Connect Firebase to continue'), findsNothing);
   });
 
-  testWidgets('a user without a profile lands on onboarding', (tester) async {
+  testWidgets('a signed-in user without a profile opens the profile form', (
+    tester,
+  ) async {
     await _pumpSeeded(
       tester,
       const SessionState.ready(uid: 'user-1', hasProfile: false),
     );
 
-    expect(find.text('Meet. Match. Connect.'), findsOneWidget);
-    expect(find.text('Step 1 of 4'), findsOneWidget);
+    expect(find.text('Create profile'), findsOneWidget);
+    expect(find.text('Step 4 of 4'), findsOneWidget);
     expect(find.byType(NavigationBar), findsNothing);
   });
 
@@ -55,21 +57,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Email'), findsOneWidget);
-    expect(
-      tester
-          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Continue'))
-          .onPressed,
-      isNull,
-    );
 
     await tester.enterText(find.byType(TextField).at(0), 'ada@example.com');
     await tester.enterText(find.byType(TextField).at(1), 'password1');
     await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, 'Continue'));
+    await tester.pump();
     expect(
-      tester
-          .widget<FilledButton>(find.widgetWithText(FilledButton, 'Continue'))
-          .onPressed,
-      isNull,
+      find.text('Tick the box to agree before the login can be created.'),
+      findsOneWidget,
     );
 
     await tester.ensureVisible(find.byKey(const Key('agree-legal')));

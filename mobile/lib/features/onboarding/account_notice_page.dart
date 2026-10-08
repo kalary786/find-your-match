@@ -29,16 +29,27 @@ class _AccountNoticePageState extends ConsumerState<AccountNoticePage> {
     super.dispose();
   }
 
-  bool get _canSubmit {
+  String? _whyBlocked() {
     final email = _email.text.trim();
-    return email.contains('@') &&
-        email.contains('.') &&
-        _password.text.length >= 8 &&
-        (_login || _agreed) &&
-        !_busy;
+    if (!email.contains('@') || !email.contains('.')) {
+      return 'Enter an email address. That email is the login.';
+    }
+    if (_password.text.length < 8) {
+      return 'Use a password of at least 8 characters.';
+    }
+    if (!_login && !_agreed) {
+      return 'Tick the box to agree before the login can be created.';
+    }
+    return null;
   }
 
   Future<void> _submit() async {
+    final blocked = _whyBlocked();
+    if (blocked != null) {
+      setState(() => _error = blocked);
+      return;
+    }
+    final router = GoRouter.of(context);
     setState(() {
       _busy = true;
       _error = null;
@@ -56,10 +67,17 @@ class _AccountNoticePageState extends ConsumerState<AccountNoticePage> {
         uid: session.userId,
         hasProfile: session.hasProfile,
       );
-      if (!mounted) return;
-      context.go(session.hasProfile ? AppRoutes.discover : AppRoutes.createProfile);
+      router.go(
+        session.hasProfile ? AppRoutes.discover : AppRoutes.createProfile,
+      );
     } on AccountFailure catch (error) {
       if (mounted) setState(() => _error = error.message);
+    } catch (_) {
+      if (mounted) {
+        setState(
+          () => _error = 'The login could not be created. Try again.',
+        );
+      }
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -72,7 +90,7 @@ class _AccountNoticePageState extends ConsumerState<AccountNoticePage> {
       step: 3,
       title: _login ? 'Sign in' : 'Create your login',
       actionLabel: _busy ? 'Please wait…' : 'Continue',
-      onAction: _canSubmit ? _submit : null,
+      onAction: _busy ? null : _submit,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

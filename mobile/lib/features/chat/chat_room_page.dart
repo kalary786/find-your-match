@@ -177,7 +177,7 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
                       controller: _text,
                       textInputAction: TextInputAction.send,
                       decoration: const InputDecoration(
-                        hintText: 'Write a message',
+                        hintText: 'Write a message · 100 a day',
                       ),
                       onSubmitted: (_) => _send(),
                     ),

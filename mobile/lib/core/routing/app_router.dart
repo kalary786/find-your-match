@@ -9,6 +9,7 @@ import 'package:find_your_match/features/legal/legal_copy.dart';
 import 'package:find_your_match/features/legal/legal_page.dart';
 import 'package:find_your_match/features/discover/user_details_page.dart';
 import 'package:find_your_match/features/matches/matches_page.dart';
+import 'package:find_your_match/features/notices/notices_page.dart';
 import 'package:find_your_match/features/onboarding/account_notice_page.dart';
 import 'package:find_your_match/features/onboarding/create_profile_page.dart';
 import 'package:find_your_match/features/onboarding/how_it_works_page.dart';
@@ -169,6 +170,11 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: AppRoutes.editProfile,
         parentNavigatorKey: rootKey,
         builder: (context, state) => const EditProfilePage(),
+      ),
+      GoRoute(
+        path: AppRoutes.notices,
+        parentNavigatorKey: rootKey,
+        builder: (context, state) => const NoticesPage(),
       ),
       GoRoute(
         path: AppRoutes.settings,

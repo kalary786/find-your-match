@@ -38,13 +38,17 @@ void main() {
     );
   });
 
-  test('a signed-in user without a profile opens onboarding', () {
+  test('a signed-in user without a profile opens the profile form', () {
     expect(
       redirectForSession(readyWithoutProfile, AppRoutes.discover),
-      AppRoutes.onboarding,
+      AppRoutes.createProfile,
     );
     expect(
       redirectForSession(readyWithoutProfile, AppRoutes.account),
+      AppRoutes.createProfile,
+    );
+    expect(
+      redirectForSession(readyWithoutProfile, AppRoutes.createProfile),
       isNull,
     );
   });

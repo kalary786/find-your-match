@@ -14,6 +14,7 @@ abstract final class AppRoutes {
   static const filters = '/filters';
   static const editProfile = '/edit-profile';
   static const settings = '/settings';
+  static const notices = '/notices';
   static const blocked = '/settings/blocked';
   static const deleteAccount = '/settings/delete-account';
   static const terms = '/legal/terms';

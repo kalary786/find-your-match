@@ -19,6 +19,11 @@ String? redirectForSession(SessionState session, String location) {
           location == AppRoutes.setup ||
           location == AppRoutes.error;
       if (!session.hasProfile) {
+        final signedIn = (session.uid ?? '').isNotEmpty;
+        if (signedIn) {
+          final creating = location == AppRoutes.createProfile || legal;
+          return creating ? null : AppRoutes.createProfile;
+        }
         return (onboarding || legal) ? null : AppRoutes.onboarding;
       }
       if (onboarding || leavingGate) return AppRoutes.discover;

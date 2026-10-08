@@ -46,6 +46,35 @@ class ProfileSave {
   final SavedAccount account;
 }
 
+class AppNotice {
+  const AppNotice({
+    required this.id,
+    required this.title,
+    required this.body,
+    required this.linkUrl,
+    required this.timeLabel,
+    required this.read,
+  });
+
+  final String id;
+  final String title;
+  final String body;
+  final String linkUrl;
+  final String timeLabel;
+  final bool read;
+
+  AppNotice copyWith({bool? read}) {
+    return AppNotice(
+      id: id,
+      title: title,
+      body: body,
+      linkUrl: linkUrl,
+      timeLabel: timeLabel,
+      read: read ?? this.read,
+    );
+  }
+}
+
 abstract class MatchApi {
   Future<MeResult?> restore();
 
@@ -113,4 +142,8 @@ abstract class MatchApi {
   });
 
   Future<HostedAd?> ad(String placement);
+
+  Future<List<AppNotice>> notices();
+
+  Future<void> readNotice(String id);
 }

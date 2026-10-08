@@ -60,12 +60,63 @@ function db(): PDO
             'Could not connect to the database. In config.php use host localhost and the database name, user, and password from hPanel.'
         );
     }
+    try {
+        ensure_runtime_tables($pdo);
+    } catch (PDOException $error) {
+        // The connection still works. Notice features report their own database error.
+    }
     return $pdo;
+}
+
+function ensure_runtime_tables(PDO $pdo): void
+{
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS notices (
+          id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          user_id INT UNSIGNED NULL,
+          title VARCHAR(80) NOT NULL,
+          body VARCHAR(500) NOT NULL,
+          link_url VARCHAR(500) NOT NULL DEFAULT \'\',
+          created_at DATETIME NOT NULL,
+          INDEX notices_user (user_id, id),
+          CONSTRAINT fk_notices_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+    );
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS notice_reads (
+          notice_id INT UNSIGNED NOT NULL,
+          user_id INT UNSIGNED NOT NULL,
+          read_at DATETIME NOT NULL,
+          PRIMARY KEY (notice_id, user_id),
+          CONSTRAINT fk_notice_reads_notice FOREIGN KEY (notice_id) REFERENCES notices(id) ON DELETE CASCADE,
+          CONSTRAINT fk_notice_reads_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+    );
+}
+
+function optional_link(string $value): string
+{
+    $link = trim($value);
+    if ($link === '') {
+        return '';
+    }
+    if (strlen($link) > 500 || !preg_match('#^https?://#i', $link)) {
+        throw new RuntimeException('Use a full http or https link, or leave the link empty.');
+    }
+    return $link;
+}
+
+function cors_headers(): void
+{
+    header('Access-Control-Allow-Origin: *');
+    header('Access-Control-Allow-Headers: Authorization, Content-Type, X-Auth-Token');
+    header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 }
 
 function fail(int $status, string $error, string $message): never
 {
     http_response_code($status);
+    cors_headers();
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode(['error' => $error, 'message' => $message]);
     exit;
@@ -74,6 +125,7 @@ function fail(int $status, string $error, string $message): never
 function json_out(array $payload, int $status = 200): never
 {
     http_response_code($status);
+    cors_headers();
     header('Content-Type: application/json; charset=utf-8');
     echo json_encode($payload);
     exit;
@@ -99,11 +151,46 @@ function request_data(): array
 
 function bearer_token(): ?string
 {
-    $header = $_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '';
-    if (!is_string($header) || !preg_match('/^Bearer\s+(\S+)$/i', $header, $match)) {
-        return null;
+    $header = authorization_header();
+    if (preg_match('/^Bearer\s+(\S+)$/i', $header, $match)) {
+        return $match[1];
     }
-    return $match[1];
+    $alt = $_SERVER['HTTP_X_AUTH_TOKEN'] ?? '';
+    if (is_string($alt) && $alt !== '') {
+        return $alt;
+    }
+    return null;
+}
+
+function authorization_header(): string
+{
+    foreach ([
+        $_SERVER['HTTP_AUTHORIZATION'] ?? null,
+        $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? null,
+    ] as $value) {
+        if (is_string($value) && $value !== '') {
+            return $value;
+        }
+    }
+    if (!function_exists('getallheaders')) {
+        return '';
+    }
+    $headers = getallheaders();
+    if (!is_array($headers)) {
+        return '';
+    }
+    foreach ($headers as $name => $value) {
+        if (!is_string($value) || $value === '') {
+            continue;
+        }
+        if (strcasecmp((string) $name, 'Authorization') === 0) {
+            return $value;
+        }
+        if (strcasecmp((string) $name, 'X-Auth-Token') === 0) {
+            $_SERVER['HTTP_X_AUTH_TOKEN'] = $value;
+        }
+    }
+    return '';
 }
 
 function current_user(): array

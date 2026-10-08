@@ -4,6 +4,7 @@ import 'package:find_your_match/core/widgets/empty_state.dart';
 import 'package:find_your_match/core/widgets/interest_wrap.dart';
 import 'package:find_your_match/core/widgets/person_avatar.dart';
 import 'package:find_your_match/features/ads/placement_ad.dart';
+import 'package:find_your_match/features/notices/notices_page.dart';
 import 'package:find_your_match/features/preview/preview_models.dart';
 import 'package:find_your_match/features/profile/account_failure.dart';
 import 'package:find_your_match/features/profile/saved_account.dart';
@@ -25,6 +26,7 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(socialControllerProvider.notifier).ensureLoaded();
+      ref.read(noticeControllerProvider.notifier).refresh();
     });
   }
 
@@ -39,6 +41,7 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
         child: Column(
           children: [
             const PlacementAd(placement: 'discover'),
+            const UnreadNoticeBanner(),
             if (hidden)
               const Padding(
                 padding: EdgeInsets.fromLTRB(16, 8, 16, 0),

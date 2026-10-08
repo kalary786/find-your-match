@@ -140,6 +140,15 @@ class _ProfileScaffoldState extends ConsumerState<_ProfileScaffold> {
             ),
           ],
           const SizedBox(height: 8),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.notifications_outlined),
+            title: const Text('Notifications'),
+            subtitle: const Text('Messages and links from the app'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push(AppRoutes.notices),
+          ),
+          const SizedBox(height: 8),
           FilledButton(
             onPressed: () => context.push(AppRoutes.editProfile),
             child: const Text('Edit profile'),

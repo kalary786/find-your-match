@@ -122,6 +122,12 @@ class FakeMatchApi implements MatchApi {
 
   @override
   Future<HostedAd?> ad(String placement) => _missing();
+
+  @override
+  Future<List<AppNotice>> notices() async => const [];
+
+  @override
+  Future<void> readNotice(String id) async {}
 }
 
 Future<T> _missing<T>() {

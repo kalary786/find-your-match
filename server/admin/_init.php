@@ -70,6 +70,7 @@ function layout(string $title, string $body, ?array $admin): void
           <a href="chats.php">Chats</a>
           <a href="reports.php">Reports</a>
           <a href="ads.php">Ads</a>
+          <a href="notices.php">Notices</a>
           <a href="logout.php">Sign out</a>
         </nav>';
     }

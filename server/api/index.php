@@ -4,6 +4,12 @@ declare(strict_types=1);
 
 require dirname(__DIR__) . '/lib/bootstrap.php';
 
+cors_headers();
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
+
 $action = (string) ($_GET['action'] ?? '');
 
 try {
@@ -32,6 +38,8 @@ try {
         'blocked' => list_blocked(),
         'report' => report_user(),
         'ads' => list_ads(),
+        'notices' => list_notices(),
+        'readNotice' => read_notice(),
         default => fail(404, 'not-found', 'That action is not available.'),
     };
 } catch (PDOException $error) {
@@ -446,6 +454,14 @@ function send_message(): void
     if ($text === '' || $length > 1000) {
         fail(400, 'invalid-argument', 'Write a message up to 1000 characters.');
     }
+    $start = (new DateTimeImmutable('today'))->format('Y-m-d H:i:s');
+    $count = db()->prepare(
+        'SELECT COUNT(*) FROM messages WHERE sender_id = ? AND created_at >= ?'
+    );
+    $count->execute([$userId, $start]);
+    if ((int) $count->fetchColumn() >= 100) {
+        fail(429, 'resource-exhausted', 'You can send 100 messages a day. Try again tomorrow.');
+    }
     require_visible_peer($userId, $peerId, true);
     $conversation = conversation_with($userId, $peerId);
     if (!$conversation) {
@@ -465,6 +481,51 @@ function send_message(): void
             'timeLabel' => (new DateTimeImmutable($stamp))->format('g:i a'),
         ],
     ]);
+}
+
+function list_notices(): void
+{
+    $userId = (int) current_user()['id'];
+    $statement = db()->prepare(
+        'SELECT n.id, n.title, n.body, n.link_url, n.created_at,
+                (r.user_id IS NOT NULL) AS seen
+         FROM notices n
+         LEFT JOIN notice_reads r ON r.notice_id = n.id AND r.user_id = ?
+         WHERE n.user_id IS NULL OR n.user_id = ?
+         ORDER BY n.id DESC
+         LIMIT 50'
+    );
+    $statement->execute([$userId, $userId]);
+    $notices = [];
+    foreach ($statement->fetchAll() as $row) {
+        $notices[] = [
+            'id' => (string) $row['id'],
+            'title' => $row['title'],
+            'body' => $row['body'],
+            'linkUrl' => $row['link_url'],
+            'timeLabel' => (new DateTimeImmutable((string) $row['created_at']))->format('M j, g:i a'),
+            'read' => (int) $row['seen'] === 1,
+        ];
+    }
+    json_out(['notices' => $notices]);
+}
+
+function read_notice(): void
+{
+    $userId = (int) current_user()['id'];
+    $noticeId = (int) (request_data()['id'] ?? 0);
+    $owns = db()->prepare(
+        'SELECT id FROM notices WHERE id = ? AND (user_id IS NULL OR user_id = ?) LIMIT 1'
+    );
+    $owns->execute([$noticeId, $userId]);
+    if (!$owns->fetch()) {
+        fail(404, 'not-found', 'That notice is not available.');
+    }
+    $insert = db()->prepare(
+        'INSERT IGNORE INTO notice_reads (notice_id, user_id, read_at) VALUES (?, ?, ?)'
+    );
+    $insert->execute([$noticeId, $userId, now()]);
+    json_out(['ok' => true]);
 }
 
 function unmatch_user(): void

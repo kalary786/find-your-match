@@ -273,6 +273,29 @@ class HttpMatchApi implements MatchApi {
   }
 
   @override
+  Future<List<AppNotice>> notices() async {
+    final body = _body(await _send('notices'));
+    final value = body['notices'];
+    if (value is! List) return const [];
+    return [
+      for (final item in value)
+        AppNotice(
+          id: stringKeyMap(item)['id']?.toString() ?? '',
+          title: stringKeyMap(item)['title']?.toString() ?? '',
+          body: stringKeyMap(item)['body']?.toString() ?? '',
+          linkUrl: stringKeyMap(item)['linkUrl']?.toString() ?? '',
+          timeLabel: stringKeyMap(item)['timeLabel']?.toString() ?? '',
+          read: stringKeyMap(item)['read'] == true,
+        ),
+    ];
+  }
+
+  @override
+  Future<void> readNotice(String id) async {
+    _body(await _send('readNotice', method: 'POST', json: {'id': id}));
+  }
+
+  @override
   Future<HostedAd?> ad(String placement) async {
     final body = _body(await _send('ads', query: {'placement': placement}));
     final ad = stringKeyMap(body['ad']);
@@ -386,6 +409,7 @@ class HttpMatchApi implements MatchApi {
       final token = await tokens.read();
       if (token != null && token.isNotEmpty) {
         headers['Authorization'] = 'Bearer $token';
+        headers['X-Auth-Token'] = token;
       }
     }
     return headers;
@@ -401,9 +425,17 @@ class HttpMatchApi implements MatchApi {
   }
 
   Map<String, dynamic> _body(http.Response response) {
-    final decoded = response.body.isEmpty
-        ? <String, dynamic>{}
-        : stringKeyMap(jsonDecode(response.body));
+    Map<String, dynamic> decoded;
+    try {
+      decoded = response.body.isEmpty
+          ? <String, dynamic>{}
+          : stringKeyMap(jsonDecode(response.body));
+    } on FormatException {
+      throw const AccountFailure(
+        AccountFailureKind.unknown,
+        'The website sent an unexpected reply. Try again.',
+      );
+    }
     if (response.statusCode >= 400) {
       throw AccountFailure.fromCode(
         decoded['error']?.toString() ?? 'unknown',
