@@ -37,8 +37,8 @@ class ApiAccountActions implements AccountActions {
   }
 
   @override
-  Future<void> deleteAccount() async {
-    await _ref.read(matchApiProvider).deleteAccount();
+  Future<void> deleteAccount({required String password}) async {
+    await _ref.read(matchApiProvider).deleteAccount(password: password);
     await _ref.read(sessionControllerProvider.notifier).signOut();
   }
 }

@@ -12,25 +12,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $notice = 'The form expired. Try again.';
     } else {
         $reportId = (int) ($_POST['report_id'] ?? 0);
-        $userId = (int) ($_POST['user_id'] ?? 0);
         $action = (string) ($_POST['action'] ?? '');
-        if ($action === 'resolve') {
+        $reported = db()->prepare('SELECT reported_id FROM reports WHERE id = ? LIMIT 1');
+        $reported->execute([$reportId]);
+        $reportRow = $reported->fetch();
+        $userId = $reportRow ? (int) $reportRow['reported_id'] : 0;
+        if ($reportId <= 0 || !$reportRow) {
+            $notice = 'That report is not available.';
+        } elseif ($action === 'resolve') {
             $statement = db()->prepare('UPDATE reports SET resolved = 1 WHERE id = ?');
             $statement->execute([$reportId]);
+            log_moderation((int) $admin['id'], 'report-resolve', $userId > 0 ? $userId : null, 'report ' . $reportId);
             $notice = 'Report marked reviewed.';
+        } elseif ($userId <= 0) {
+            $notice = 'That reported account is already gone.';
         } elseif ($action === 'block') {
-            $statement = db()->prepare('UPDATE users SET blocked = 1, token_hash = NULL WHERE id = ?');
+            $statement = db()->prepare(
+                'UPDATE users SET blocked = 1, token_hash = NULL, token_expires_at = NULL WHERE id = ?'
+            );
             $statement->execute([$userId]);
             $mark = db()->prepare('UPDATE reports SET resolved = 1 WHERE id = ?');
             $mark->execute([$reportId]);
+            log_moderation((int) $admin['id'], 'user-block', $userId, 'report ' . $reportId);
             $notice = 'User blocked.';
         } elseif ($action === 'delete') {
-            $profile = db()->prepare('SELECT photo_path FROM profiles WHERE user_id = ?');
-            $profile->execute([$userId]);
-            $path = $profile->fetchColumn();
-            unlink_public(is_string($path) ? $path : null);
-            $delete = db()->prepare('DELETE FROM users WHERE id = ?');
-            $delete->execute([$userId]);
+            log_moderation((int) $admin['id'], 'user-delete', $userId, 'report ' . $reportId);
+            delete_user_account($userId);
             $notice = 'User deleted.';
         }
     }

@@ -71,7 +71,8 @@ class AppShell extends StatelessWidget {
             label: 'Discover',
           ),
           NavigationDestination(
-            icon: Icon(Icons.search),
+            icon: Icon(Icons.search_outlined),
+            selectedIcon: Icon(Icons.search),
             label: 'Search',
           ),
           NavigationDestination(

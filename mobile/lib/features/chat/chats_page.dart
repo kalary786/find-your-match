@@ -15,26 +15,41 @@ class ChatsPage extends ConsumerStatefulWidget {
   ConsumerState<ChatsPage> createState() => _ChatsPageState();
 }
 
-class _ChatsPageState extends ConsumerState<ChatsPage> {
+class _ChatsPageState extends ConsumerState<ChatsPage>
+    with WidgetsBindingObserver {
   Timer? _refresh;
+  var _foreground = true;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final social = ref.read(socialControllerProvider.notifier);
       social.refreshInbox();
       if (ref.read(socialSeedProvider) != null) return;
-      _refresh = Timer.periodic(const Duration(seconds: 8), (_) {
-        social.refreshInbox();
-      });
+      _refresh = Timer.periodic(const Duration(seconds: 8), (_) => _poll());
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final foreground = state == AppLifecycleState.resumed;
+    if (_foreground == foreground) return;
+    _foreground = foreground;
+    if (foreground) _poll();
+  }
+
+  void _poll() {
+    if (!mounted || !_foreground) return;
+    ref.read(socialControllerProvider.notifier).refreshInbox();
   }
 
   @override
   void dispose() {
     _refresh?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
 
@@ -60,20 +75,9 @@ class _ChatsPageState extends ConsumerState<ChatsPage> {
                 final last = chat.lastMessage.isEmpty
                     ? 'Say hello'
                     : chat.lastMessage;
-                return ListTile(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  tileColor: Theme.of(
-                    context,
-                  ).colorScheme.surfaceContainerLowest,
-                  leading: PersonAvatar(person: chat.person),
-                  title: Text(chat.person.displayName),
-                  subtitle: Text(
-                    last,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
+                return PersonTile(
+                  person: chat.person,
+                  subtitle: last,
                   onTap: () =>
                       context.push(AppRoutes.conversation(chat.person.id)),
                 );

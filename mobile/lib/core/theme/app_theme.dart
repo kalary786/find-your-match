@@ -26,6 +26,21 @@ abstract final class AppTheme {
 
     return base.copyWith(
       scaffoldBackgroundColor: scheme.surface,
+      textTheme: base.textTheme.copyWith(
+        headlineMedium: base.textTheme.headlineMedium?.copyWith(
+          fontWeight: FontWeight.w800,
+          letterSpacing: -0.4,
+          height: 1.15,
+        ),
+        headlineSmall: base.textTheme.headlineSmall?.copyWith(
+          fontWeight: FontWeight.w800,
+          height: 1.2,
+        ),
+        titleMedium: base.textTheme.titleMedium?.copyWith(
+          fontWeight: FontWeight.w700,
+        ),
+        bodyLarge: base.textTheme.bodyLarge?.copyWith(height: 1.4),
+      ),
       appBarTheme: AppBarTheme(
         backgroundColor: scheme.surface,
         foregroundColor: scheme.onSurface,
@@ -46,7 +61,7 @@ abstract final class AppTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
-          minimumSize: const Size(0, 52),
+          minimumSize: const Size(48, 52),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -54,6 +69,27 @@ abstract final class AppTheme {
             fontWeight: FontWeight.w700,
           ),
         ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          minimumSize: const Size(48, 52),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          textStyle: base.textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+      ),
+      iconButtonTheme: IconButtonThemeData(
+        style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      ),
+      dialogTheme: DialogThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
       cardTheme: CardThemeData(
         color: scheme.surfaceContainerLowest,

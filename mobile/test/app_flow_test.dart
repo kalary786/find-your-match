@@ -193,6 +193,13 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byType(CheckboxListTile));
     await tester.pump();
+    expect(find.widgetWithText(FilledButton, 'Delete account'), findsOneWidget);
+    expect(
+      tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Delete account')).onPressed,
+      isNull,
+    );
+    await tester.enterText(find.byKey(const Key('delete-password')), 'secret-pass');
+    await tester.pump();
     await tester.tap(find.byKey(const Key('confirm-delete')));
     await tester.pumpAndSettle();
     expect(find.text('Step 1 of 4'), findsOneWidget);

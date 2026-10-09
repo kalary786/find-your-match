@@ -76,26 +76,7 @@ class UserDetailsPage extends ConsumerWidget {
               child: const Text('Unmatch'),
             ),
           ] else
-            PrimaryButton(
-              label: 'Like',
-              onPressed: () async {
-                try {
-                  final created = await ref
-                      .read(socialControllerProvider.notifier)
-                      .like(person.id);
-                  if (created && context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('It is a match.')),
-                    );
-                  }
-                } on AccountFailure catch (error) {
-                  if (!context.mounted) return;
-                  ScaffoldMessenger.of(
-                    context,
-                  ).showSnackBar(SnackBar(content: Text(error.message)));
-                }
-              },
-            ),
+            _LikeButton(personId: person.id),
           const SizedBox(height: 8),
           Row(
             children: [
@@ -206,5 +187,47 @@ class UserDetailsPage extends ConsumerWidget {
         context,
       ).showSnackBar(SnackBar(content: Text(error.message)));
     }
+  }
+}
+
+class _LikeButton extends ConsumerStatefulWidget {
+  const _LikeButton({required this.personId});
+
+  final String personId;
+
+  @override
+  ConsumerState<_LikeButton> createState() => _LikeButtonState();
+}
+
+class _LikeButtonState extends ConsumerState<_LikeButton> {
+  var _busy = false;
+
+  Future<void> _like() async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    try {
+      final created = await ref
+          .read(socialControllerProvider.notifier)
+          .like(widget.personId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(created ? 'It is a match.' : 'Like sent.')),
+      );
+    } on AccountFailure catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(error.message)),
+      );
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PrimaryButton(
+      label: _busy ? 'Sending…' : 'Like',
+      onPressed: _busy ? null : _like,
+    );
   }
 }

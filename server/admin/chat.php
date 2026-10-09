@@ -23,6 +23,7 @@ if (!$conversation) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_ok()) {
     $delete = db()->prepare('DELETE FROM conversations WHERE id = ?');
     $delete->execute([$id]);
+    log_moderation((int) $admin['id'], 'chat-delete', null, 'conversation ' . $id);
     header('Location: chats.php');
     exit;
 }

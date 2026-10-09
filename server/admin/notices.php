@@ -14,8 +14,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $action = (string) ($_POST['action'] ?? 'create');
         if ($action === 'delete') {
+            $noticeId = (int) ($_POST['notice_id'] ?? 0);
             $delete = db()->prepare('DELETE FROM notices WHERE id = ?');
-            $delete->execute([(int) ($_POST['notice_id'] ?? 0)]);
+            $delete->execute([$noticeId]);
+            log_moderation((int) $admin['id'], 'notice-delete', null, 'notice ' . $noticeId);
             $notice = 'Notice removed.';
         } else {
             $title = trim((string) ($_POST['title'] ?? ''));
@@ -47,6 +49,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $link,
                         now(),
                     ]);
+                    log_moderation(
+                        (int) $admin['id'],
+                        'notice-create',
+                        $target > 0 ? $target : null,
+                        'notice ' . (int) db()->lastInsertId()
+                    );
                     $notice = $target > 0
                         ? 'Notice sent to that user.'
                         : 'Notice sent to everyone.';

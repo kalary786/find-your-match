@@ -56,6 +56,11 @@ function register_user(): void
     if (strlen($password) < 8) {
         fail(400, 'invalid-argument', 'Use a password of at least 8 characters.');
     }
+    $ipKey = 'ip:' . client_ip();
+    if (rate_limit_blocked('register', $ipKey, 5, 3600)) {
+        fail(429, 'resource-exhausted', 'Too many attempts. Try again later.');
+    }
+    rate_limit_record('register', $ipKey);
     $statement = db()->prepare('SELECT id, blocked FROM users WHERE email = ? LIMIT 1');
     $statement->execute([$email]);
     if ($statement->fetch()) {
@@ -74,12 +79,20 @@ function login_user(): void
     $input = request_data();
     $email = normalize_email($input['email'] ?? '');
     $password = (string) ($input['password'] ?? '');
+    $emailKey = 'email:' . $email;
+    $ipKey = 'ip:' . client_ip();
+    if (rate_limit_blocked('login', $emailKey, 8, 900) || rate_limit_blocked('login', $ipKey, 30, 900)) {
+        fail(429, 'resource-exhausted', 'Too many attempts. Try again later.');
+    }
     $statement = db()->prepare('SELECT id, password_hash, blocked FROM users WHERE email = ? LIMIT 1');
     $statement->execute([$email]);
     $user = $statement->fetch();
     if (!$user || !password_verify($password, (string) $user['password_hash'])) {
+        rate_limit_record('login', $emailKey);
+        rate_limit_record('login', $ipKey);
         fail(401, 'unauthenticated', 'Email or password is incorrect.');
     }
+    rate_limit_clear('login', $emailKey);
     if ((int) $user['blocked'] === 1) {
         fail(403, 'blocked', 'This account is blocked.');
     }
@@ -91,7 +104,9 @@ function logout_user(): void
 {
     $token = bearer_token();
     if ($token) {
-        $statement = db()->prepare('UPDATE users SET token_hash = NULL WHERE token_hash = ?');
+        $statement = db()->prepare(
+            'UPDATE users SET token_hash = NULL, token_expires_at = NULL WHERE token_hash = ?'
+        );
         $statement->execute([hash('sha256', $token)]);
     }
     json_out(['ok' => true]);
@@ -231,13 +246,32 @@ function set_privacy(): void
 function delete_account(): void
 {
     $user = current_user();
-    delete_user_account((int) $user['id']);
+    $userId = (int) $user['id'];
+    $key = 'user:' . $userId;
+    if (rate_limit_blocked('delete', $key, 8, 900)) {
+        fail(429, 'resource-exhausted', 'Too many attempts. Try again later.');
+    }
+    $password = (string) (request_data()['password'] ?? '');
+    $statement = db()->prepare('SELECT password_hash FROM users WHERE id = ? LIMIT 1');
+    $statement->execute([$userId]);
+    $hash = (string) $statement->fetchColumn();
+    if ($hash === '' || !password_verify($password, $hash)) {
+        rate_limit_record('delete', $key);
+        fail(400, 'invalid-argument', 'The password is incorrect.');
+    }
+    rate_limit_clear('delete', $key);
+    delete_user_account($userId);
     json_out(['ok' => true]);
 }
 
 function change_password(): void
 {
     $user = current_user();
+    $userId = (int) $user['id'];
+    $key = 'user:' . $userId;
+    if (rate_limit_blocked('password', $key, 5, 900)) {
+        fail(429, 'resource-exhausted', 'Too many attempts. Try again later.');
+    }
     $input = request_data();
     $current = (string) ($input['currentPassword'] ?? '');
     $next = (string) ($input['password'] ?? '');
@@ -245,14 +279,27 @@ function change_password(): void
         fail(400, 'invalid-argument', 'Use a password of at least 8 characters.');
     }
     $statement = db()->prepare('SELECT password_hash FROM users WHERE id = ? LIMIT 1');
-    $statement->execute([(int) $user['id']]);
+    $statement->execute([$userId]);
     $hash = (string) $statement->fetchColumn();
     if ($hash === '' || !password_verify($current, $hash)) {
+        rate_limit_record('password', $key);
         fail(400, 'invalid-argument', 'The current password is incorrect.');
     }
-    $update = db()->prepare('UPDATE users SET password_hash = ? WHERE id = ?');
-    $update->execute([password_hash($next, PASSWORD_DEFAULT), (int) $user['id']]);
-    json_out(['ok' => true]);
+    rate_limit_clear('password', $key);
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $update = $pdo->prepare('UPDATE users SET password_hash = ? WHERE id = ?');
+        $update->execute([password_hash($next, PASSWORD_DEFAULT), $userId]);
+        $token = issue_token($userId);
+        $pdo->commit();
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $error;
+    }
+    json_out(['ok' => true, 'token' => $token]);
 }
 
 function list_discover(): void
@@ -285,14 +332,7 @@ function list_search(): void
 {
     $user = current_user();
     $userId = (int) $user['id'];
-    $input = request_data();
-    $minAge = max(18, (int) ($input['minAge'] ?? 18));
-    $maxAge = min(99, (int) ($input['maxAge'] ?? 99));
-    if ($maxAge < $minAge) {
-        $maxAge = $minAge;
-    }
-    $gender = (string) ($input['gender'] ?? '');
-    $query = strtolower(trim((string) ($input['query'] ?? '')));
+    $filters = validated_search_filters(request_data());
     $sql = 'SELECT p.* FROM profiles p
             JOIN users u ON u.id = p.user_id
             WHERE p.user_id <> ? AND p.hidden = 0 AND u.blocked = 0
@@ -302,35 +342,32 @@ function list_search(): void
                 WHERE (b.blocker_id = ? AND b.blocked_id = p.user_id)
                    OR (b.blocker_id = p.user_id AND b.blocked_id = ?)
               )';
-    $params = [$userId, $minAge, $maxAge, $userId, $userId];
-    if (in_array($gender, GENDERS, true)) {
+    $params = [$userId, $filters['minAge'], $filters['maxAge'], $userId, $userId];
+    if ($filters['gender'] !== '') {
         $sql .= ' AND p.gender = ?';
-        $params[] = $gender;
+        $params[] = $filters['gender'];
     }
-    if ($query !== '') {
-        $sql .= ' AND (LOWER(p.username) LIKE ? OR LOWER(p.city) LIKE ?)';
-        $like = '%' . $query . '%';
+    if ($filters['query'] !== '') {
+        $sql .= ' AND (LOWER(p.username) LIKE ? ESCAPE \'\\\\\' OR LOWER(p.city) LIKE ? ESCAPE \'\\\\\')';
+        $like = like_contains($filters['query']);
         $params[] = $like;
         $params[] = $like;
+    }
+    foreach (['interests' => 'p.interests', 'preferences' => 'p.preferences'] as $key => $column) {
+        if ($filters[$key] === []) {
+            continue;
+        }
+        $parts = [];
+        foreach ($filters[$key] as $value) {
+            $parts[] = 'JSON_CONTAINS(' . $column . ', JSON_QUOTE(?))';
+            $params[] = $value;
+        }
+        $sql .= ' AND (' . implode(' OR ', $parts) . ')';
     }
     $sql .= ' ORDER BY p.created_at DESC LIMIT 50';
     $statement = db()->prepare($sql);
     $statement->execute($params);
-    $interests = list_field($input['interests'] ?? [], INTERESTS);
-    $preferences = list_field($input['preferences'] ?? [], PREFERENCES);
-    $people = [];
-    foreach ($statement->fetchAll() as $row) {
-        $rowInterests = json_decode((string) $row['interests'], true) ?: [];
-        $rowPreferences = json_decode((string) $row['preferences'], true) ?: [];
-        if ($interests !== [] && array_intersect($interests, $rowInterests) === []) {
-            continue;
-        }
-        if ($preferences !== [] && array_intersect($preferences, $rowPreferences) === []) {
-            continue;
-        }
-        $people[] = person_payload($row, false);
-    }
-    json_out(['people' => $people]);
+    json_out(['people' => array_map(fn ($row) => person_payload($row, false), $statement->fetchAll())]);
 }
 
 function swipe(bool $liked): void
@@ -339,36 +376,69 @@ function swipe(bool $liked): void
     $userId = (int) $user['id'];
     $peerId = (int) (request_data()['userId'] ?? 0);
     require_visible_peer($userId, $peerId);
-    $statement = db()->prepare(
-        'INSERT INTO swipes (from_user_id, to_user_id, liked, created_at)
-         VALUES (?, ?, ?, ?)
-         ON DUPLICATE KEY UPDATE liked = VALUES(liked)'
-    );
-    $statement->execute([$userId, $peerId, $liked ? 1 : 0, now()]);
+    $low = min($userId, $peerId);
+    $high = max($userId, $peerId);
+    $pdo = db();
+    $lockName = 'fym-pair-' . $low . '-' . $high;
     $matched = false;
-    if ($liked) {
-        $back = db()->prepare(
-            'SELECT 1 FROM swipes WHERE from_user_id = ? AND to_user_id = ? AND liked = 1 LIMIT 1'
-        );
-        $back->execute([$peerId, $userId]);
-        if ($back->fetchColumn()) {
-            $low = min($userId, $peerId);
-            $high = max($userId, $peerId);
-            $match = db()->prepare(
-                'INSERT IGNORE INTO matches (user_low, user_high, created_at) VALUES (?, ?, ?)'
-            );
-            $match->execute([$low, $high, now()]);
-            $found = db()->prepare('SELECT id FROM matches WHERE user_low = ? AND user_high = ? LIMIT 1');
-            $found->execute([$low, $high]);
-            $matchId = (int) $found->fetchColumn();
-            if ($matchId > 0) {
-                $conversation = db()->prepare(
-                    'INSERT IGNORE INTO conversations (match_id, user_low, user_high, created_at) VALUES (?, ?, ?, ?)'
+    $lock = $pdo->prepare('SELECT GET_LOCK(?, 3)');
+    $lock->execute([$lockName]);
+    if ((int) $lock->fetchColumn() !== 1) {
+        fail(429, 'resource-exhausted', 'Please wait a moment and try again.');
+    }
+    try {
+        $pdo->beginTransaction();
+        try {
+            if (!$liked) {
+                $existing = $pdo->prepare(
+                    'SELECT id FROM matches WHERE user_low = ? AND user_high = ? LIMIT 1'
                 );
-                $conversation->execute([$matchId, $low, $high, now()]);
+                $existing->execute([$low, $high]);
+                if ($existing->fetchColumn()) {
+                    throw new RuntimeException('Unmatch to end this match.');
+                }
             }
-            $matched = true;
+            $statement = $pdo->prepare(
+                'INSERT INTO swipes (from_user_id, to_user_id, liked, created_at)
+                 VALUES (?, ?, ?, ?)
+                 ON DUPLICATE KEY UPDATE liked = VALUES(liked)'
+            );
+            $statement->execute([$userId, $peerId, $liked ? 1 : 0, now()]);
+            if ($liked) {
+                $back = $pdo->prepare(
+                    'SELECT 1 FROM swipes WHERE from_user_id = ? AND to_user_id = ? AND liked = 1 LIMIT 1'
+                );
+                $back->execute([$peerId, $userId]);
+                if ($back->fetchColumn()) {
+                    $match = $pdo->prepare(
+                        'INSERT IGNORE INTO matches (user_low, user_high, created_at) VALUES (?, ?, ?)'
+                    );
+                    $match->execute([$low, $high, now()]);
+                    $found = $pdo->prepare(
+                        'SELECT id FROM matches WHERE user_low = ? AND user_high = ? LIMIT 1'
+                    );
+                    $found->execute([$low, $high]);
+                    $matchId = (int) $found->fetchColumn();
+                    if ($matchId > 0) {
+                        $conversation = $pdo->prepare(
+                            'INSERT IGNORE INTO conversations (match_id, user_low, user_high, created_at)
+                             VALUES (?, ?, ?, ?)'
+                        );
+                        $conversation->execute([$matchId, $low, $high, now()]);
+                        $matched = true;
+                    }
+                }
+            }
+            $pdo->commit();
+        } catch (Throwable $error) {
+            if ($pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            throw $error;
         }
+    } finally {
+        $release = $pdo->prepare('SELECT RELEASE_LOCK(?)');
+        $release->execute([$lockName]);
     }
     json_out(['matched' => $matched]);
 }
@@ -430,13 +500,24 @@ function list_messages(): void
     if (!$conversation) {
         fail(404, 'not-found', 'Chat opens after a match.');
     }
-    $statement = db()->prepare(
-        'SELECT id, sender_id, body, created_at FROM messages
-         WHERE conversation_id = ?
-         ORDER BY id DESC
-         LIMIT 200'
-    );
-    $statement->execute([(int) $conversation['id']]);
+    $conversationId = (int) $conversation['id'];
+    $before = (int) ($_GET['before'] ?? 0);
+    $sql = 'SELECT id, sender_id, body, created_at FROM messages WHERE conversation_id = ?';
+    $params = [$conversationId];
+    if ($before > 0) {
+        $owns = db()->prepare(
+            'SELECT 1 FROM messages WHERE id = ? AND conversation_id = ? LIMIT 1'
+        );
+        $owns->execute([$before, $conversationId]);
+        if (!$owns->fetchColumn()) {
+            fail(404, 'not-found', 'That message is not in this chat.');
+        }
+        $sql .= ' AND id < ?';
+        $params[] = $before;
+    }
+    $sql .= ' ORDER BY id DESC LIMIT 50';
+    $statement = db()->prepare($sql);
+    $statement->execute($params);
     $messages = [];
     foreach (array_reverse($statement->fetchAll()) as $row) {
         $messages[] = message_payload($row, $userId);
@@ -449,33 +530,41 @@ function send_message(): void
     $userId = (int) current_user()['id'];
     $input = request_data();
     $peerId = (int) ($input['userId'] ?? 0);
-    $text = trim((string) ($input['text'] ?? ''));
-    $length = function_exists('mb_strlen') ? mb_strlen($text) : strlen($text);
-    if ($text === '' || $length > 1000) {
-        fail(400, 'invalid-argument', 'Write a message up to 1000 characters.');
-    }
-    $start = (new DateTimeImmutable('today'))->format('Y-m-d H:i:s');
-    $count = db()->prepare(
-        'SELECT COUNT(*) FROM messages WHERE sender_id = ? AND created_at >= ?'
-    );
-    $count->execute([$userId, $start]);
-    if ((int) $count->fetchColumn() >= 100) {
-        fail(429, 'resource-exhausted', 'You can send 100 messages a day. Try again tomorrow.');
-    }
+    $text = message_text((string) ($input['text'] ?? ''));
     require_visible_peer($userId, $peerId, true);
     $conversation = conversation_with($userId, $peerId);
     if (!$conversation) {
         fail(404, 'not-found', 'Chat opens after a match.');
     }
-    $stamp = now();
-    $insert = db()->prepare(
-        'INSERT INTO messages (conversation_id, sender_id, body, created_at) VALUES (?, ?, ?, ?)'
-    );
-    $insert->execute([(int) $conversation['id'], $userId, $text, $stamp]);
+    $lockName = 'fym-msg-' . $userId;
+    $lock = db()->prepare('SELECT GET_LOCK(?, 3)');
+    $lock->execute([$lockName]);
+    if ((int) $lock->fetchColumn() !== 1) {
+        fail(429, 'resource-exhausted', 'Please wait a moment and try again.');
+    }
+    try {
+        [$start, $end] = server_day_bounds();
+        $count = db()->prepare(
+            'SELECT COUNT(*) FROM messages WHERE sender_id = ? AND created_at >= ? AND created_at < ?'
+        );
+        $count->execute([$userId, $start, $end]);
+        if ((int) $count->fetchColumn() >= 100) {
+            fail(429, 'resource-exhausted', 'You can send 100 messages a day. Try again tomorrow.');
+        }
+        $stamp = now();
+        $insert = db()->prepare(
+            'INSERT INTO messages (conversation_id, sender_id, body, created_at) VALUES (?, ?, ?, ?)'
+        );
+        $insert->execute([(int) $conversation['id'], $userId, $text, $stamp]);
+        $messageId = (string) db()->lastInsertId();
+    } finally {
+        $release = db()->prepare('SELECT RELEASE_LOCK(?)');
+        $release->execute([$lockName]);
+    }
     touch_active($userId);
     json_out([
         'message' => [
-            'id' => (string) db()->lastInsertId(),
+            'id' => $messageId,
             'fromMe' => true,
             'text' => $text,
             'timeLabel' => (new DateTimeImmutable($stamp))->format('g:i a'),
@@ -543,14 +632,25 @@ function unmatch_user(): void
     if ($matchId <= 0) {
         fail(404, 'not-found', 'That match is already gone.');
     }
-    $delete = db()->prepare('DELETE FROM matches WHERE id = ?');
-    $delete->execute([$matchId]);
-    $swipes = db()->prepare(
-        'DELETE FROM swipes
-         WHERE (from_user_id = ? AND to_user_id = ?)
-            OR (from_user_id = ? AND to_user_id = ?)'
-    );
-    $swipes->execute([$userId, $peerId, $peerId, $userId]);
+    // Blocks stay in place. Deleting the match cascades the conversation and its messages.
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $delete = $pdo->prepare('DELETE FROM matches WHERE id = ?');
+        $delete->execute([$matchId]);
+        $swipes = $pdo->prepare(
+            'DELETE FROM swipes
+             WHERE (from_user_id = ? AND to_user_id = ?)
+                OR (from_user_id = ? AND to_user_id = ?)'
+        );
+        $swipes->execute([$userId, $peerId, $peerId, $userId]);
+        $pdo->commit();
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $error;
+    }
     json_out(['ok' => true]);
 }
 
@@ -593,6 +693,10 @@ function list_blocked(): void
 function report_user(): void
 {
     $userId = (int) current_user()['id'];
+    $key = 'user:' . $userId;
+    if (rate_limit_blocked('report', $key, 10, 3600)) {
+        fail(429, 'resource-exhausted', 'Too many reports. Try again later.');
+    }
     $input = request_data();
     $peerId = (int) ($input['userId'] ?? 0);
     $reason = (string) ($input['reason'] ?? '');
@@ -604,8 +708,9 @@ function report_user(): void
     }
     $details = trim((string) ($input['details'] ?? ''));
     if ((function_exists('mb_strlen') ? mb_strlen($details) : strlen($details)) > 500) {
-        $details = function_exists('mb_substr') ? mb_substr($details, 0, 500) : substr($details, 0, 500);
+        fail(400, 'invalid-argument', 'Keep the note to 500 characters.');
     }
+    rate_limit_record('report', $key);
     $statement = db()->prepare(
         'INSERT INTO reports (reporter_id, reported_id, reason, details, created_at) VALUES (?, ?, ?, ?, ?)'
     );

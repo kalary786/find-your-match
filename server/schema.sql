@@ -10,8 +10,10 @@ CREATE TABLE IF NOT EXISTS users (
   email VARCHAR(190) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
   token_hash CHAR(64) NULL,
+  token_expires_at DATETIME NULL,
   blocked TINYINT(1) NOT NULL DEFAULT 0,
-  created_at DATETIME NOT NULL
+  created_at DATETIME NOT NULL,
+  INDEX users_token_hash (token_hash)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS profiles (
@@ -73,6 +75,7 @@ CREATE TABLE IF NOT EXISTS messages (
   body VARCHAR(1000) NOT NULL,
   created_at DATETIME NOT NULL,
   INDEX messages_conversation (conversation_id, id),
+  INDEX messages_sender_day (sender_id, created_at),
   CONSTRAINT fk_messages_conversation FOREIGN KEY (conversation_id) REFERENCES conversations(id) ON DELETE CASCADE,
   CONSTRAINT fk_messages_sender FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -83,6 +86,7 @@ CREATE TABLE IF NOT EXISTS blocks (
   blocked_id INT UNSIGNED NOT NULL,
   created_at DATETIME NOT NULL,
   UNIQUE KEY block_pair (blocker_id, blocked_id),
+  INDEX blocks_blocked (blocked_id),
   CONSTRAINT fk_blocks_blocker FOREIGN KEY (blocker_id) REFERENCES users(id) ON DELETE CASCADE,
   CONSTRAINT fk_blocks_blocked FOREIGN KEY (blocked_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -127,4 +131,23 @@ CREATE TABLE IF NOT EXISTS ads (
   placement ENUM('discover', 'search', 'matches') NOT NULL,
   active TINYINT(1) NOT NULL DEFAULT 1,
   created_at DATETIME NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS auth_attempts (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  action VARCHAR(32) NOT NULL,
+  subject_hash CHAR(64) NOT NULL,
+  created_at DATETIME NOT NULL,
+  INDEX auth_attempts_lookup (action, subject_hash, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS moderation_events (
+  id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+  admin_id INT UNSIGNED NOT NULL,
+  action VARCHAR(32) NOT NULL,
+  target_user_id INT UNSIGNED NULL,
+  note VARCHAR(120) NOT NULL DEFAULT '',
+  created_at DATETIME NOT NULL,
+  INDEX moderation_created (created_at),
+  CONSTRAINT fk_moderation_admin FOREIGN KEY (admin_id) REFERENCES admins(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

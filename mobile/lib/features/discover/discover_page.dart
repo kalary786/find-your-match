@@ -1,6 +1,8 @@
 import 'package:find_your_match/core/routing/app_routes.dart';
 import 'package:find_your_match/core/widgets/centered_panel.dart';
 import 'package:find_your_match/core/widgets/empty_state.dart';
+import 'package:find_your_match/core/widgets/error_state.dart';
+import 'package:find_your_match/core/widgets/loading_state.dart';
 import 'package:find_your_match/core/widgets/interest_wrap.dart';
 import 'package:find_your_match/core/widgets/person_avatar.dart';
 import 'package:find_your_match/features/ads/placement_ad.dart';
@@ -21,6 +23,8 @@ class DiscoverPage extends ConsumerStatefulWidget {
 }
 
 class _DiscoverPageState extends ConsumerState<DiscoverPage> {
+  var _acting = false;
+
   @override
   void initState() {
     super.initState();
@@ -51,16 +55,22 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
               ),
             Expanded(
               child: social.loading && queue.isEmpty
-                  ? const Center(child: CircularProgressIndicator())
+                  ? const Center(child: LoadingState(message: 'Finding people'))
                   : queue.isEmpty
-                  ? EmptyState(
-                      icon: Icons.explore_outlined,
-                      title: social.error == null
-                          ? 'No profiles left'
-                          : 'Could not load profiles',
-                      message: social.error ??
-                          'New people will show up here when they join. You can also open Search.',
-                    )
+                  ? social.error == null
+                      ? const EmptyState(
+                          icon: Icons.explore_outlined,
+                          title: 'No profiles left',
+                          message:
+                              'New people will show up here when they join. You can also open Search.',
+                        )
+                      : ErrorState(
+                          title: 'Could not load profiles',
+                          message: social.error!,
+                          onRetry: () {
+                            ref.read(socialControllerProvider.notifier).ensureLoaded();
+                          },
+                        )
                   : Padding(
                       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
                       child: _DiscoverCard(person: queue.first),
@@ -73,7 +83,7 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
                   children: [
                     Expanded(
                       child: OutlinedButton.icon(
-                        onPressed: () => _pass(queue.first.id),
+                        onPressed: _acting ? null : () => _pass(queue.first.id),
                         icon: const Icon(Icons.close),
                         label: const Text('Pass'),
                       ),
@@ -82,7 +92,7 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
                     Expanded(
                       child: FilledButton.icon(
                         key: const Key('discover-like'),
-                        onPressed: () => _like(queue.first),
+                        onPressed: _acting ? null : () => _like(queue.first),
                         icon: const Icon(Icons.favorite),
                         label: const Text('Like'),
                       ),
@@ -97,23 +107,35 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
   }
 
   Future<void> _pass(String id) async {
+    if (_acting) return;
+    setState(() => _acting = true);
     try {
       await ref.read(socialControllerProvider.notifier).pass(id);
+      _show('Passed.');
     } on AccountFailure catch (error) {
       _show(error.message);
+    } finally {
+      if (mounted) setState(() => _acting = false);
     }
   }
 
   Future<void> _like(Person person) async {
+    if (_acting) return;
+    setState(() => _acting = true);
     try {
       final matched = await ref
           .read(socialControllerProvider.notifier)
           .like(person.id);
-      if (matched && mounted) {
-        _show('You matched with ${person.displayName}.');
-      }
+      if (!mounted) return;
+      _show(
+        matched
+            ? 'You matched with ${person.displayName}.'
+            : 'Like sent.',
+      );
     } on AccountFailure catch (error) {
       _show(error.message);
+    } finally {
+      if (mounted) setState(() => _acting = false);
     }
   }
 
@@ -142,7 +164,10 @@ class _DiscoverCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final coverHeight = (constraints.maxHeight * 0.52).clamp(160, 360);
+          final available = constraints.maxHeight;
+          final coverHeight = available < 280
+              ? available * 0.46
+              : (available * 0.55).clamp(180, 420);
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

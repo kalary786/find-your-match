@@ -33,23 +33,16 @@ class MatchesPage extends ConsumerWidget {
                         const SizedBox(height: 8),
                     itemBuilder: (context, index) {
                       final person = matches[index];
-                      return ListTile(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        tileColor: Theme.of(
-                          context,
-                        ).colorScheme.surfaceContainerLowest,
-                        leading: PersonAvatar(person: person),
-                        title: Text(person.displayName),
-                        subtitle: Text('${person.age} · ${person.city}'),
+                      return PersonTile(
+                        person: person,
+                        subtitle: '${person.age} · ${person.city}',
+                        onTap: () => context.push(AppRoutes.person(person.id)),
                         trailing: IconButton(
                           tooltip: 'Chat',
                           onPressed: () =>
                               context.push(AppRoutes.conversation(person.id)),
                           icon: const Icon(Icons.chat_bubble_outline),
                         ),
-                        onTap: () => context.push(AppRoutes.person(person.id)),
                       );
                     },
                   ),

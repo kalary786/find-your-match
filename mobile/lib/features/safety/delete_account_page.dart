@@ -15,9 +15,16 @@ class DeleteAccountPage extends ConsumerStatefulWidget {
 }
 
 class _DeleteAccountPageState extends ConsumerState<DeleteAccountPage> {
+  final _password = TextEditingController();
   var _confirmed = false;
   var _busy = false;
   String? _error;
+
+  @override
+  void dispose() {
+    _password.dispose();
+    super.dispose();
+  }
 
   Future<void> _delete() async {
     setState(() {
@@ -25,7 +32,7 @@ class _DeleteAccountPageState extends ConsumerState<DeleteAccountPage> {
       _error = null;
     });
     try {
-      await ref.read(accountActionsProvider).deleteAccount();
+      await ref.read(accountActionsProvider).deleteAccount(password: _password.text);
       if (!mounted) return;
       context.go(AppRoutes.onboarding);
     } on AccountFailure catch (error) {
@@ -61,6 +68,15 @@ class _DeleteAccountPageState extends ConsumerState<DeleteAccountPage> {
             style: theme.textTheme.bodyLarge,
           ),
           const SizedBox(height: 8),
+          TextField(
+            key: const Key('delete-password'),
+            controller: _password,
+            obscureText: true,
+            enabled: !_busy,
+            decoration: const InputDecoration(labelText: 'Password'),
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 8),
           CheckboxListTile(
             contentPadding: EdgeInsets.zero,
             value: _confirmed,
@@ -86,7 +102,9 @@ class _DeleteAccountPageState extends ConsumerState<DeleteAccountPage> {
           PrimaryButton(
             key: const Key('confirm-delete'),
             label: _busy ? 'Deleting…' : 'Delete account',
-            onPressed: _confirmed && !_busy ? _delete : null,
+            onPressed: _confirmed && !_busy && _password.text.isNotEmpty
+                ? _delete
+                : null,
           ),
         ],
       ),

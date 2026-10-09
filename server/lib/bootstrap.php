@@ -92,6 +92,51 @@ function ensure_runtime_tables(PDO $pdo): void
           CONSTRAINT fk_notice_reads_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
     );
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS auth_attempts (
+          id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          action VARCHAR(32) NOT NULL,
+          subject_hash CHAR(64) NOT NULL,
+          created_at DATETIME NOT NULL,
+          INDEX auth_attempts_lookup (action, subject_hash, created_at)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+    );
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS moderation_events (
+          id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+          admin_id INT UNSIGNED NOT NULL,
+          action VARCHAR(32) NOT NULL,
+          target_user_id INT UNSIGNED NULL,
+          note VARCHAR(120) NOT NULL DEFAULT \'\',
+          created_at DATETIME NOT NULL,
+          INDEX moderation_created (created_at),
+          CONSTRAINT fk_moderation_admin FOREIGN KEY (admin_id) REFERENCES admins(id)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+    );
+    ensure_column($pdo, 'users', 'token_expires_at', 'DATETIME NULL');
+    ensure_index($pdo, 'users', 'users_token_hash', 'ALTER TABLE users ADD INDEX users_token_hash (token_hash)');
+    ensure_index($pdo, 'messages', 'messages_sender_day', 'ALTER TABLE messages ADD INDEX messages_sender_day (sender_id, created_at)');
+    ensure_index($pdo, 'blocks', 'blocks_blocked', 'ALTER TABLE blocks ADD INDEX blocks_blocked (blocked_id)');
+}
+
+function ensure_column(PDO $pdo, string $table, string $column, string $definition): void
+{
+    $statement = $pdo->query('SHOW COLUMNS FROM `' . $table . '` LIKE ' . $pdo->quote($column));
+    if ($statement && $statement->fetch()) {
+        return;
+    }
+    $pdo->exec('ALTER TABLE `' . $table . '` ADD COLUMN `' . $column . '` ' . $definition);
+}
+
+function ensure_index(PDO $pdo, string $table, string $name, string $sql): void
+{
+    $statement = $pdo->query(
+        'SHOW INDEX FROM `' . $table . '` WHERE Key_name = ' . $pdo->quote($name)
+    );
+    if ($statement && $statement->fetch()) {
+        return;
+    }
+    $pdo->exec($sql);
 }
 
 function optional_link(string $value): string
@@ -104,6 +149,53 @@ function optional_link(string $value): string
         throw new RuntimeException('Use a full http or https link, or leave the link empty.');
     }
     return $link;
+}
+
+function client_ip(): string
+{
+    $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+    return is_string($ip) ? $ip : '';
+}
+
+function rate_limit_blocked(string $action, string $subject, int $max, int $windowSeconds): bool
+{
+    $since = date('Y-m-d H:i:s', time() - $windowSeconds);
+    $count = db()->prepare(
+        'SELECT COUNT(*) FROM auth_attempts WHERE action = ? AND subject_hash = ? AND created_at >= ?'
+    );
+    $count->execute([$action, hash('sha256', $subject), $since]);
+    return (int) $count->fetchColumn() >= $max;
+}
+
+function rate_limit_record(string $action, string $subject): void
+{
+    $insert = db()->prepare(
+        'INSERT INTO auth_attempts (action, subject_hash, created_at) VALUES (?, ?, ?)'
+    );
+    $insert->execute([$action, hash('sha256', $subject), now()]);
+    if (random_int(1, 20) === 1) {
+        $old = date('Y-m-d H:i:s', time() - 172800);
+        $prune = db()->prepare('DELETE FROM auth_attempts WHERE created_at < ?');
+        $prune->execute([$old]);
+    }
+}
+
+function rate_limit_clear(string $action, string $subject): void
+{
+    $delete = db()->prepare('DELETE FROM auth_attempts WHERE action = ? AND subject_hash = ?');
+    $delete->execute([$action, hash('sha256', $subject)]);
+}
+
+function log_moderation(int $adminId, string $action, ?int $targetUserId, string $note = ''): void
+{
+    $length = function_exists('mb_strlen') ? mb_strlen($note) : strlen($note);
+    if ($length > 120) {
+        $note = function_exists('mb_substr') ? mb_substr($note, 0, 120) : substr($note, 0, 120);
+    }
+    $insert = db()->prepare(
+        'INSERT INTO moderation_events (admin_id, action, target_user_id, note, created_at) VALUES (?, ?, ?, ?, ?)'
+    );
+    $insert->execute([$adminId, $action, $targetUserId, $note, now()]);
 }
 
 function cors_headers(): void
@@ -201,7 +293,7 @@ function current_user(): array
     }
     $hash = hash('sha256', $token);
     $statement = db()->prepare(
-        'SELECT id, email, blocked FROM users WHERE token_hash = ? LIMIT 1'
+        'SELECT id, email, blocked, token_expires_at FROM users WHERE token_hash = ? LIMIT 1'
     );
     $statement->execute([$hash]);
     $user = $statement->fetch();
@@ -210,6 +302,19 @@ function current_user(): array
     }
     if ((int) $user['blocked'] === 1) {
         fail(403, 'blocked', 'This account is blocked.');
+    }
+    $expires = $user['token_expires_at'] ?? null;
+    if (!is_string($expires) || $expires === '') {
+        $backfill = db()->prepare(
+            'UPDATE users SET token_expires_at = ? WHERE id = ? AND token_hash = ?'
+        );
+        $backfill->execute([token_expiry(), (int) $user['id'], $hash]);
+    } elseif (strtotime($expires) < time()) {
+        $clear = db()->prepare(
+            'UPDATE users SET token_hash = NULL, token_expires_at = NULL WHERE id = ? AND token_hash = ?'
+        );
+        $clear->execute([(int) $user['id'], $hash]);
+        fail(401, 'unauthenticated', 'Sign in again.');
     }
     return $user;
 }
@@ -230,6 +335,96 @@ function media_url(?string $path): ?string
 function now(): string
 {
     return (new DateTimeImmutable('now'))->format('Y-m-d H:i:s');
+}
+
+function server_day_bounds(): array
+{
+    // One calendar day on this server's clock, from midnight up to the next midnight.
+    // Message rows use now(), so the daily cap and the stored time share that clock.
+    $start = new DateTimeImmutable('today');
+    return [
+        $start->format('Y-m-d H:i:s'),
+        $start->modify('+1 day')->format('Y-m-d H:i:s'),
+    ];
+}
+
+function message_text(string $text): string
+{
+    $text = trim($text);
+    $length = function_exists('mb_strlen') ? mb_strlen($text) : strlen($text);
+    if ($text === '' || $length > 1000) {
+        throw new RuntimeException('Write a message up to 1000 characters.');
+    }
+    return $text;
+}
+
+function validated_search_filters(array $input): array
+{
+    $minAge = filter_var($input['minAge'] ?? 18, FILTER_VALIDATE_INT);
+    $maxAge = filter_var($input['maxAge'] ?? 99, FILTER_VALIDATE_INT);
+    if ($minAge === false || $maxAge === false || $minAge < 18 || $maxAge > 99 || $maxAge < $minAge) {
+        throw new RuntimeException('Use an age range from 18 to 99.');
+    }
+    $genderRaw = $input['gender'] ?? '';
+    $gender = is_string($genderRaw) ? trim($genderRaw) : '';
+    if ($gender !== '' && !in_array($gender, GENDERS, true)) {
+        throw new RuntimeException('Choose a listed gender.');
+    }
+    $queryRaw = $input['query'] ?? '';
+    $query = strtolower(trim(is_string($queryRaw) ? $queryRaw : ''));
+    if (function_exists('mb_strlen') && mb_strlen($query) > 40) {
+        $query = mb_substr($query, 0, 40);
+    } elseif (strlen($query) > 40) {
+        $query = substr($query, 0, 40);
+    }
+    return [
+        'minAge' => $minAge,
+        'maxAge' => $maxAge,
+        'gender' => $gender,
+        'query' => $query,
+        'interests' => validated_choice_list(
+            $input['interests'] ?? [],
+            INTERESTS,
+            'Choose interests from the list.'
+        ),
+        'preferences' => validated_choice_list(
+            $input['preferences'] ?? [],
+            PREFERENCES,
+            'Choose preferences from the list.'
+        ),
+    ];
+}
+
+function validated_choice_list(mixed $value, array $allowed, string $message): array
+{
+    if ($value === null || $value === '' || $value === []) {
+        return [];
+    }
+    if (is_string($value)) {
+        $decoded = json_decode($value, true);
+        if (!is_array($decoded)) {
+            throw new RuntimeException($message);
+        }
+        $value = $decoded;
+    }
+    if (!is_array($value)) {
+        throw new RuntimeException($message);
+    }
+    $clean = [];
+    foreach ($value as $item) {
+        if (!is_string($item) || !in_array($item, $allowed, true)) {
+            throw new RuntimeException($message);
+        }
+        if (!in_array($item, $clean, true)) {
+            $clean[] = $item;
+        }
+    }
+    return $clean;
+}
+
+function like_contains(string $value): string
+{
+    return '%' . str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value) . '%';
 }
 
 function age_years(string $birthDate): int
@@ -400,11 +595,21 @@ function load_profile(int $userId): ?array
 function delete_user_account(int $userId): void
 {
     $profile = load_profile($userId);
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        $statement = $pdo->prepare('DELETE FROM users WHERE id = ?');
+        $statement->execute([$userId]);
+        $pdo->commit();
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $error;
+    }
     if ($profile) {
         unlink_public($profile['photo_path'] ?? null);
     }
-    $statement = db()->prepare('DELETE FROM users WHERE id = ?');
-    $statement->execute([$userId]);
 }
 
 function touch_active(int $userId): void
@@ -413,11 +618,18 @@ function touch_active(int $userId): void
     $statement->execute([now(), $userId]);
 }
 
+function token_expiry(): string
+{
+    return (new DateTimeImmutable('now'))->modify('+30 days')->format('Y-m-d H:i:s');
+}
+
 function issue_token(int $userId): string
 {
     $token = bin2hex(random_bytes(32));
-    $statement = db()->prepare('UPDATE users SET token_hash = ? WHERE id = ?');
-    $statement->execute([hash('sha256', $token), $userId]);
+    $statement = db()->prepare(
+        'UPDATE users SET token_hash = ?, token_expires_at = ? WHERE id = ?'
+    );
+    $statement->execute([hash('sha256', $token), token_expiry(), $userId]);
     return $token;
 }
 

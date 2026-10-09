@@ -14,7 +14,7 @@ abstract class AccountActions {
   Future<CreateOutcome> create(ProfileDraft draft);
   Future<SavedAccount> update(ProfileDraft draft);
   Future<void> setHidden(bool hidden);
-  Future<void> deleteAccount();
+  Future<void> deleteAccount({required String password});
 }
 
 const maxPhotoBytes = 5 * 1024 * 1024;

@@ -13,21 +13,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $userId = (int) ($_POST['user_id'] ?? 0);
         $action = (string) ($_POST['action'] ?? '');
-        if ($action === 'block') {
-            $statement = db()->prepare('UPDATE users SET blocked = 1, token_hash = NULL WHERE id = ?');
+        if ($userId > 0 && $action === 'block') {
+            $statement = db()->prepare(
+                'UPDATE users SET blocked = 1, token_hash = NULL, token_expires_at = NULL WHERE id = ?'
+            );
             $statement->execute([$userId]);
+            log_moderation((int) $admin['id'], 'user-block', $userId);
             $notice = 'User blocked. They can no longer sign in.';
-        } elseif ($action === 'unblock') {
+        } elseif ($userId > 0 && $action === 'unblock') {
             $statement = db()->prepare('UPDATE users SET blocked = 0 WHERE id = ?');
             $statement->execute([$userId]);
+            log_moderation((int) $admin['id'], 'user-unblock', $userId);
             $notice = 'User unblocked.';
-        } elseif ($action === 'delete') {
-            $profile = db()->prepare('SELECT photo_path FROM profiles WHERE user_id = ?');
-            $profile->execute([$userId]);
-            $path = $profile->fetchColumn();
-            unlink_public(is_string($path) ? $path : null);
-            $delete = db()->prepare('DELETE FROM users WHERE id = ?');
-            $delete->execute([$userId]);
+        } elseif ($userId > 0 && $action === 'delete') {
+            log_moderation((int) $admin['id'], 'user-delete', $userId);
+            delete_user_account($userId);
             $notice = 'User deleted, including profile, photos, likes, and chats.';
         }
     }

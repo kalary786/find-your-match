@@ -14,6 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $conversationId = (int) ($_POST['conversation_id'] ?? 0);
         $statement = db()->prepare('DELETE FROM conversations WHERE id = ?');
         $statement->execute([$conversationId]);
+        log_moderation((int) $admin['id'], 'chat-delete', null, 'conversation ' . $conversationId);
         $notice = 'Chat deleted. The messages are gone.';
     }
 }

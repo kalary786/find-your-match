@@ -17,6 +17,8 @@ class SearchPage extends ConsumerStatefulWidget {
 }
 
 class _SearchPageState extends ConsumerState<SearchPage> {
+  var _searching = false;
+
   @override
   void initState() {
     super.initState();
@@ -55,46 +57,50 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                   labelText: 'Search by username or city',
                   prefixIcon: Icon(Icons.search),
                 ),
-                onSubmitted: (value) async {
-                  try {
-                    await ref
-                        .read(socialControllerProvider.notifier)
-                        .search(value);
-                  } on AccountFailure catch (error) {
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text(error.message)),
-                    );
-                  }
-                },
+                textInputAction: TextInputAction.search,
+                onSubmitted: _searching
+                    ? null
+                    : (value) async {
+                        setState(() => _searching = true);
+                        try {
+                          await ref
+                              .read(socialControllerProvider.notifier)
+                              .search(value);
+                        } on AccountFailure catch (error) {
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text(error.message)),
+                          );
+                        } finally {
+                          if (mounted) setState(() => _searching = false);
+                        }
+                      },
               ),
             ),
+            if (_searching) const LinearProgressIndicator(),
             Expanded(
               child: results.isEmpty
-                  ? const EmptyState(
+                  ? EmptyState(
                       icon: Icons.search,
-                      title: 'No people yet',
-                      message:
-                          'Search by username or city. Results come from profiles on your website.',
+                      title: _searching ? 'Searching' : 'No people yet',
+                      message: _searching
+                          ? 'Looking through profiles on your website.'
+                          : 'Search by username or city. Results come from profiles on your website.',
                     )
                   : ListView.separated(
-                      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
                       itemCount: results.length,
                       separatorBuilder: (context, index) =>
                           const SizedBox(height: 8),
                       itemBuilder: (context, index) {
                         final person = results[index];
-                        return ListTile(
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          tileColor: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerLowest,
-                          leading: PersonAvatar(person: person),
-                          title: Text(person.displayName),
-                          subtitle: Text('${person.username} · ${person.city}'),
-                          onTap: () => context.push(AppRoutes.person(person.id)),
+                        return PersonTile(
+                          person: person,
+                          subtitle: '${person.username} · ${person.city}',
+                          onTap: () =>
+                              context.push(AppRoutes.person(person.id)),
                         );
                       },
                     ),

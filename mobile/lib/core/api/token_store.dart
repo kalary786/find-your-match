@@ -1,3 +1,4 @@
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 abstract class TokenStore {
@@ -18,22 +19,34 @@ class MemoryTokenStore implements TokenStore {
   }
 }
 
-class PrefsTokenStore implements TokenStore {
-  static const _key = 'session_token';
+class SecureTokenStore implements TokenStore {
+  SecureTokenStore({FlutterSecureStorage? secure})
+    : _secure = secure ?? const FlutterSecureStorage();
+
+  static const legacyKey = 'session_token';
+
+  final FlutterSecureStorage _secure;
 
   @override
   Future<String?> read() async {
+    final current = await _secure.read(key: legacyKey);
+    if (current != null && current.isNotEmpty) return current;
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_key);
+    final legacy = prefs.getString(legacyKey);
+    if (legacy == null || legacy.isEmpty) return null;
+    await _secure.write(key: legacyKey, value: legacy);
+    await prefs.remove(legacyKey);
+    return legacy;
   }
 
   @override
   Future<void> write(String? token) async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(legacyKey);
     if (token == null || token.isEmpty) {
-      await prefs.remove(_key);
+      await _secure.delete(key: legacyKey);
       return;
     }
-    await prefs.setString(_key, token);
+    await _secure.write(key: legacyKey, value: token);
   }
 }

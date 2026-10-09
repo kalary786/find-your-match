@@ -20,10 +20,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             unlink_public((string) ($path->fetchColumn() ?: ''));
             $delete = db()->prepare('DELETE FROM ads WHERE id = ?');
             $delete->execute([$adId]);
+            log_moderation((int) $admin['id'], 'ad-delete', null, 'ad ' . $adId);
             $notice = 'Ad removed.';
         } elseif ($action === 'toggle') {
             $toggle = db()->prepare('UPDATE ads SET active = IF(active = 1, 0, 1) WHERE id = ?');
             $toggle->execute([$adId]);
+            log_moderation((int) $admin['id'], 'ad-toggle', null, 'ad ' . $adId);
             $notice = 'Ad updated.';
         } else {
             $title = trim((string) ($_POST['title'] ?? ''));
@@ -31,20 +33,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $placement = (string) ($_POST['placement'] ?? '');
             if ($title === '' || strlen($title) > 80) {
                 $error = 'Enter a title up to 80 characters.';
-            } elseif (!filter_var($link, FILTER_VALIDATE_URL)) {
-                $error = 'Enter a full link, including https://.';
             } elseif (!in_array($placement, AD_PLACEMENTS, true)) {
                 $error = 'Choose Discover, Search, or Matches.';
             } elseif (empty($_FILES['image']['tmp_name'])) {
                 $error = 'Upload an ad image.';
             } else {
                 try {
+                    $link = optional_link($link);
+                    if ($link === '') {
+                        throw new RuntimeException('Enter a full http or https link.');
+                    }
                     $image = store_image($_FILES['image'], 'ads');
                     $insert = db()->prepare(
                         'INSERT INTO ads (title, image_path, link_url, placement, active, created_at)
                          VALUES (?, ?, ?, ?, 1, ?)'
                     );
                     $insert->execute([$title, $image, $link, $placement, now()]);
+                    log_moderation((int) $admin['id'], 'ad-create', null, 'ad ' . (int) db()->lastInsertId());
                     $notice = 'Ad is on.';
                 } catch (RuntimeException $exception) {
                     $error = $exception->getMessage();

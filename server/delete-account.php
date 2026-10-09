@@ -12,10 +12,17 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
     $email = strtolower(trim((string) ($_POST['email'] ?? '')));
     $password = (string) ($_POST['password'] ?? '');
     $confirmed = isset($_POST['confirm']);
+    $emailKey = 'email:' . $email;
+    $ipKey = 'ip:' . client_ip();
     if (!$confirmed) {
         $error = 'Confirm that you want to permanently delete the account.';
     } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL) || $password === '') {
         $error = 'Enter the email and password for the account.';
+    } elseif (
+        rate_limit_blocked('delete-web', $emailKey, 8, 900)
+        || rate_limit_blocked('delete-web', $ipKey, 20, 900)
+    ) {
+        $error = 'Too many attempts. Try again later.';
     } else {
         try {
             $statement = db()->prepare(
@@ -24,8 +31,11 @@ if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST') {
             $statement->execute([$email]);
             $user = $statement->fetch();
             if (!$user || !password_verify($password, (string) $user['password_hash'])) {
+                rate_limit_record('delete-web', $emailKey);
+                rate_limit_record('delete-web', $ipKey);
                 $error = 'Email or password is incorrect.';
             } else {
+                rate_limit_clear('delete-web', $emailKey);
                 delete_user_account((int) $user['id']);
                 $done = true;
             }

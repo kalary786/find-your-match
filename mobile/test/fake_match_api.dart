@@ -42,9 +42,12 @@ class FakeMatchApi implements MatchApi {
   Future<void> logout() async {}
 
   String? changedPassword;
+  String? deletedWithPassword;
 
   @override
-  Future<void> deleteAccount() async {}
+  Future<void> deleteAccount({required String password}) async {
+    deletedWithPassword = password;
+  }
 
   @override
   Future<void> changePassword({
@@ -54,16 +57,50 @@ class FakeMatchApi implements MatchApi {
     changedPassword = password;
   }
 
+  int sendCalls = 0;
+  AccountFailure? sendError;
+  Future<void> Function()? sendGate;
+  int messageCalls = 0;
+  String? lastBefore;
+  List<ChatMessage> messageResult = const [];
+  Map<String, List<ChatMessage>> olderMessages = const {};
+  AccountFailure? messageError;
+  Future<void> Function()? messageGate;
+  int likeCalls = 0;
+  bool likeMatched = false;
+  List<Person> matchesResult = const [];
+  List<ChatThread> chatsResult = const [];
+  List<Person> blockedResult = const [];
+  List<Person> discoverResult = const [];
+  int unblockCalls = 0;
+  int matchesCalls = 0;
+  Future<void> Function()? matchesGate;
+  int blockCalls = 0;
+
   @override
   Future<ChatMessage> sendMessage({
     required String userId,
     required String text,
   }) async {
+    sendCalls += 1;
+    final gate = sendGate;
+    if (gate != null) await gate();
+    final error = sendError;
+    if (error != null) throw error;
     return ChatMessage(id: 'sent', fromMe: true, text: text, timeLabel: 'Now');
   }
 
   @override
-  Future<List<ChatMessage>> messages(String userId) async => const [];
+  Future<List<ChatMessage>> messages(String userId, {String? before}) async {
+    messageCalls += 1;
+    lastBefore = before;
+    final gate = messageGate;
+    if (gate != null) await gate();
+    final error = messageError;
+    if (error != null) throw error;
+    if (before != null) return olderMessages[before] ?? const [];
+    return messageResult;
+  }
 
   @override
   Future<ProfileSave> createProfile(ProfileDraft draft) => _missing();
@@ -81,7 +118,7 @@ class FakeMatchApi implements MatchApi {
   }) => _missing();
 
   @override
-  Future<List<Person>> discover() => _missing();
+  Future<List<Person>> discover() async => discoverResult;
 
   @override
   Future<List<Person>> search({
@@ -90,7 +127,10 @@ class FakeMatchApi implements MatchApi {
   }) => _missing();
 
   @override
-  Future<bool> like(String userId) => _missing();
+  Future<bool> like(String userId) async {
+    likeCalls += 1;
+    return likeMatched;
+  }
 
   @override
   Future<void> pass(String userId) => _missing();
@@ -99,19 +139,28 @@ class FakeMatchApi implements MatchApi {
   Future<void> unmatch(String userId) async {}
 
   @override
-  Future<List<Person>> matches() => _missing();
+  Future<List<Person>> matches() async {
+    matchesCalls += 1;
+    final gate = matchesGate;
+    if (gate != null) await gate();
+    return matchesResult;
+  }
 
   @override
-  Future<List<ChatThread>> chats() => _missing();
+  Future<List<ChatThread>> chats() async => chatsResult;
 
   @override
-  Future<void> block(String userId) => _missing();
+  Future<void> block(String userId) async {
+    blockCalls += 1;
+  }
 
   @override
-  Future<void> unblock(String userId) => _missing();
+  Future<void> unblock(String userId) async {
+    unblockCalls += 1;
+  }
 
   @override
-  Future<List<Person>> blocked() => _missing();
+  Future<List<Person>> blocked() async => blockedResult;
 
   @override
   Future<void> report({

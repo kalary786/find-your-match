@@ -98,7 +98,7 @@ abstract class MatchApi {
     required bool showLastActive,
   });
 
-  Future<void> deleteAccount();
+  Future<void> deleteAccount({required String password});
 
   Future<void> changePassword({
     required String currentPassword,
@@ -122,7 +122,7 @@ abstract class MatchApi {
 
   Future<List<ChatThread>> chats();
 
-  Future<List<ChatMessage>> messages(String userId);
+  Future<List<ChatMessage>> messages(String userId, {String? before});
 
   Future<ChatMessage> sendMessage({
     required String userId,

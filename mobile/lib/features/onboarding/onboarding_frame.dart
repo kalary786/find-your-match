@@ -36,6 +36,15 @@ class OnboardingFrame extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                 ),
               ),
+              const SizedBox(height: 8),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: LinearProgressIndicator(
+                  value: step / stepCount,
+                  minHeight: 6,
+                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                ),
+              ),
               const SizedBox(height: 12),
               Text(
                 title,

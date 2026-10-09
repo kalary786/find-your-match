@@ -27,6 +27,10 @@ class PlacementAd extends ConsumerWidget {
             child: Image.network(
               ad.imageUrl,
               fit: BoxFit.cover,
+              loadingBuilder: (context, child, progress) {
+                if (progress == null) return child;
+                return const Center(child: CircularProgressIndicator());
+              },
               errorBuilder: (context, error, stackTrace) {
                 return Center(child: Text(ad.title));
               },

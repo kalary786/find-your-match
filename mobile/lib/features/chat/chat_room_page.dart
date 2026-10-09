@@ -8,6 +8,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+bool shouldPollChat({
+  required bool foreground,
+  required bool routeCurrent,
+  required bool matched,
+  required bool blocked,
+}) {
+  return foreground && routeCurrent && matched && !blocked;
+}
+
 class ChatRoomPage extends ConsumerStatefulWidget {
   const ChatRoomPage({required this.userId, super.key});
 
@@ -17,33 +26,73 @@ class ChatRoomPage extends ConsumerStatefulWidget {
   ConsumerState<ChatRoomPage> createState() => _ChatRoomPageState();
 }
 
-class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
+class _ChatRoomPageState extends ConsumerState<ChatRoomPage>
+    with WidgetsBindingObserver {
   final _text = TextEditingController();
+  final _scroll = ScrollController();
   Timer? _refresh;
+  var _sending = false;
+  var _foreground = true;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _scroll.addListener(_loadOlderIfNeeded);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final social = ref.read(socialControllerProvider.notifier);
       social.openChat(widget.userId);
       if (ref.read(socialSeedProvider) != null) return;
-      _refresh = Timer.periodic(const Duration(seconds: 4), (_) {
-        social.refreshMessages(widget.userId);
-      });
+      _refresh = Timer.periodic(const Duration(seconds: 4), (_) => _poll());
     });
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    final foreground = state == AppLifecycleState.resumed;
+    if (_foreground == foreground) return;
+    _foreground = foreground;
+    if (foreground) _poll();
+  }
+
+  void _poll() {
+    if (!mounted) return;
+    final social = ref.read(socialControllerProvider);
+    final routeCurrent = ModalRoute.of(context)?.isCurrent ?? true;
+    if (!shouldPollChat(
+      foreground: _foreground,
+      routeCurrent: routeCurrent,
+      matched: social.isMatched(widget.userId),
+      blocked: social.blocked.any((item) => item.id == widget.userId),
+    )) {
+      return;
+    }
+    ref.read(socialControllerProvider.notifier).refreshMessages(widget.userId);
+  }
+
+  void _loadOlderIfNeeded() {
+    if (!_scroll.hasClients) return;
+    final position = _scroll.position;
+    if (position.maxScrollExtent <= 0) return;
+    if (position.pixels < position.maxScrollExtent - 80) return;
+    ref.read(socialControllerProvider.notifier).loadOlderMessages(widget.userId);
   }
 
   @override
   void dispose() {
     _refresh?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    _scroll.removeListener(_loadOlderIfNeeded);
+    _scroll.dispose();
     _text.dispose();
     super.dispose();
   }
 
   Future<void> _send() async {
-    final text = _text.text;
+    final text = _text.text.trim();
+    if (text.isEmpty || _sending) return;
+    setState(() => _sending = true);
     _text.clear();
     try {
       await ref
@@ -51,9 +100,12 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
           .sendMessage(widget.userId, text);
     } on AccountFailure catch (error) {
       if (!mounted) return;
+      _text.text = text;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(error.message)),
       );
+    } finally {
+      if (mounted) setState(() => _sending = false);
     }
   }
 
@@ -114,6 +166,7 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
         children: [
           Expanded(
             child: ListView.builder(
+              controller: _scroll,
               reverse: true,
               padding: const EdgeInsets.all(16),
               itemCount: messages.length,
@@ -126,7 +179,9 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
                       : Alignment.centerLeft,
                   child: Container(
                     margin: const EdgeInsets.only(bottom: 8),
-                    constraints: const BoxConstraints(maxWidth: 320),
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.sizeOf(context).width * 0.78,
+                    ),
                     padding: const EdgeInsets.symmetric(
                       horizontal: 14,
                       vertical: 10,
@@ -176,6 +231,14 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
                       key: const Key('chat-input'),
                       controller: _text,
                       textInputAction: TextInputAction.send,
+                      maxLength: 1000,
+                      buildCounter:
+                          (
+                            context, {
+                            required int currentLength,
+                            required bool isFocused,
+                            int? maxLength,
+                          }) => null,
                       decoration: const InputDecoration(
                         hintText: 'Write a message · 100 a day',
                       ),
@@ -185,7 +248,7 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage> {
                   const SizedBox(width: 8),
                   IconButton.filled(
                     tooltip: 'Send',
-                    onPressed: _send,
+                    onPressed: _sending ? null : _send,
                     icon: const Icon(Icons.send),
                   ),
                 ],

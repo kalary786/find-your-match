@@ -35,41 +35,97 @@ class PersonCover extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final base = HSLColor.fromAHSL(1, person.hue, 0.52, 0.38).toColor();
-    final lift = HSLColor.fromAHSL(1, person.hue, 0.42, 0.58).toColor();
+    final photo = person.photoUrl;
     return ClipRRect(
       borderRadius: BorderRadius.circular(28),
-      child: Container(
+      child: SizedBox(
         height: height,
         width: double.infinity,
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [lift, base],
-          ),
-        ),
-        child: Stack(
-          children: [
-            if (person.photoUrl != null)
-              Positioned.fill(
-                child: Image.network(
-                  person.photoUrl!,
+        child: ColoredBox(
+          color: base,
+          child: photo == null || photo.isEmpty
+              ? _Initials(person: person, theme: theme)
+              : Image.network(
+                  photo,
                   fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(),
+                  width: double.infinity,
+                  height: height,
+                  loadingBuilder: (context, child, progress) {
+                    if (progress == null) return child;
+                    return const Center(
+                      child: CircularProgressIndicator(color: Colors.white),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    return _Initials(person: person, theme: theme);
+                  },
                 ),
-              ),
-            if (person.photoUrl == null)
-              Center(
-                child: Text(
-                  person.initials,
-                  style: theme.textTheme.displayLarge?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.92),
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-              ),
-          ],
         ),
+      ),
+    );
+  }
+}
+
+class _Initials extends StatelessWidget {
+  const _Initials({required this.person, required this.theme});
+
+  final Person person;
+  final ThemeData theme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Text(
+        person.initials,
+        style: theme.textTheme.displayLarge?.copyWith(
+          color: Colors.white.withValues(alpha: 0.92),
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class PersonTile extends StatelessWidget {
+  const PersonTile({
+    required this.person,
+    required this.subtitle,
+    this.onTap,
+    this.trailing,
+    super.key,
+  });
+
+  final Person person;
+  final String subtitle;
+  final VoidCallback? onTap;
+  final Widget? trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Material(
+      color: theme.colorScheme.surfaceContainerLowest,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
+      ),
+      child: ListTile(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        leading: PersonAvatar(person: person),
+        title: Text(
+          person.displayName,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: theme.textTheme.titleMedium,
+        ),
+        subtitle: Text(
+          subtitle,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+        trailing: trailing,
+        onTap: onTap,
       ),
     );
   }

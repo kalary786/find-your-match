@@ -4,6 +4,29 @@ import 'package:find_your_match/features/preview/preview_models.dart';
 import 'package:find_your_match/features/profile/account_failure.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+/// Matches the server page in list_messages.
+const messagePageSize = 50;
+
+List<ChatMessage> mergeChatMessages(
+  List<ChatMessage> current,
+  List<ChatMessage> incoming,
+) {
+  final byId = <String, ChatMessage>{
+    for (final message in current) message.id: message,
+    for (final message in incoming) message.id: message,
+  };
+  final merged = byId.values.toList();
+  merged.sort((a, b) {
+    final left = int.tryParse(a.id);
+    final right = int.tryParse(b.id);
+    if (left == null && right == null) return 0;
+    if (left == null) return 1;
+    if (right == null) return -1;
+    return left.compareTo(right);
+  });
+  return merged;
+}
+
 /// When set, widget tests render this directory and skip network loads.
 final socialSeedProvider = Provider<SocialState?>((ref) => null);
 
@@ -93,6 +116,9 @@ class SocialState {
 
 class SocialController extends Notifier<SocialState> {
   var _loading = false;
+  var _inboxInFlight = false;
+  final _messageLoads = <String>{};
+  final _noOlder = <String>{};
 
   @override
   SocialState build() {
@@ -164,10 +190,14 @@ class SocialController extends Notifier<SocialState> {
   Future<void> unmatch(String userId) async {
     await ref.read(matchApiProvider).unmatch(userId);
     final person = state.personById(userId);
+    final blocked = state.blocked.any((item) => item.id == userId);
     final messages = {...state.messages}..remove(userId);
+    _noOlder.remove(userId);
     state = state.copyWith(
       discover: [
-        if (person != null && !state.discover.any((item) => item.id == userId))
+        if (!blocked &&
+            person != null &&
+            !state.discover.any((item) => item.id == userId))
           person,
         for (final item in state.discover)
           if (item.id != userId) item,
@@ -206,50 +236,89 @@ class SocialController extends Notifier<SocialState> {
 
   Future<void> refreshMessages(String userId) async {
     if (ref.read(socialSeedProvider) != null) return;
+    if (!_messageLoads.add(userId)) return;
     try {
       final incoming = await ref.read(matchApiProvider).messages(userId);
       final local = state.messages[userId] ?? const <ChatMessage>[];
-      final known = incoming.map((message) => message.id).toSet();
-      final pending = [
-        for (final message in local)
-          if (!known.contains(message.id)) message,
-      ];
-      final merged = [...incoming, ...pending];
+      final merged = mergeChatMessages(local, incoming);
       state = state.copyWith(
         messages: {...state.messages, userId: merged},
         chats: _withLatest(userId, merged.isEmpty ? null : merged.last.text),
       );
-    } on AccountFailure {
-      // Keep the thread that is already on screen.
+    } on AccountFailure catch (error) {
+      await _signOutIfNeeded(error);
+      if (error.kind == AccountFailureKind.unavailable) {
+        _dropConversation(userId);
+      }
+    } finally {
+      _messageLoads.remove(userId);
+    }
+  }
+
+  Future<void> loadOlderMessages(String userId) async {
+    if (ref.read(socialSeedProvider) != null || _noOlder.contains(userId)) {
+      return;
+    }
+    if (!_messageLoads.add(userId)) return;
+    try {
+      final local = state.messages[userId] ?? const <ChatMessage>[];
+      if (local.isEmpty || int.tryParse(local.first.id) == null) return;
+      final older = await ref
+          .read(matchApiProvider)
+          .messages(userId, before: local.first.id);
+      if (older.isEmpty || older.length < messagePageSize) {
+        _noOlder.add(userId);
+      }
+      if (older.isEmpty) return;
+      final merged = mergeChatMessages(
+        state.messages[userId] ?? local,
+        older,
+      );
+      state = state.copyWith(
+        messages: {...state.messages, userId: merged},
+      );
+    } on AccountFailure catch (error) {
+      await _signOutIfNeeded(error);
+      if (error.kind == AccountFailureKind.unavailable) {
+        _dropConversation(userId);
+      }
+    } finally {
+      _messageLoads.remove(userId);
     }
   }
 
   Future<void> refreshInbox() async {
-    if (ref.read(socialSeedProvider) != null) return;
+    if (ref.read(socialSeedProvider) != null || _inboxInFlight) return;
+    _inboxInFlight = true;
     try {
       final api = ref.read(matchApiProvider);
       final matches = await api.matches();
       final chats = await api.chats();
       state = state.copyWith(matches: matches, chats: chats);
-    } on AccountFailure {
-      // Keep the inbox that is already on screen.
+    } on AccountFailure catch (error) {
+      await _signOutIfNeeded(error);
+    } finally {
+      _inboxInFlight = false;
     }
   }
 
   Future<void> sendMessage(String userId, String text) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty) return;
-    final message = await ref
-        .read(matchApiProvider)
-        .sendMessage(userId: userId, text: trimmed);
-    final existing = state.messages[userId] ?? const <ChatMessage>[];
-    state = state.copyWith(
-      messages: {
-        ...state.messages,
-        userId: [...existing, message],
-      },
-      chats: _withLatest(userId, message.text),
-    );
+    try {
+      final message = await ref
+          .read(matchApiProvider)
+          .sendMessage(userId: userId, text: trimmed);
+      final existing = state.messages[userId] ?? const <ChatMessage>[];
+      final merged = mergeChatMessages(existing, [message]);
+      state = state.copyWith(
+        messages: {...state.messages, userId: merged},
+        chats: _withLatest(userId, message.text),
+      );
+    } on AccountFailure catch (error) {
+      await _signOutIfNeeded(error);
+      rethrow;
+    }
   }
 
   List<ChatThread> _withLatest(String userId, String? text) {
@@ -269,6 +338,8 @@ class SocialController extends Notifier<SocialState> {
 
   Future<void> block(String userId) async {
     await ref.read(matchApiProvider).block(userId);
+    final messages = {...state.messages}..remove(userId);
+    _noOlder.remove(userId);
     state = state.copyWith(
       discover: [
         for (final person in state.discover)
@@ -286,17 +357,46 @@ class SocialController extends Notifier<SocialState> {
         for (final chat in state.chats)
           if (chat.person.id != userId) chat,
       ],
+      messages: messages,
       blocked: await ref.read(matchApiProvider).blocked(),
     );
   }
 
   Future<void> unblock(String userId) async {
-    await ref.read(matchApiProvider).unblock(userId);
+    final api = ref.read(matchApiProvider);
+    await api.unblock(userId);
+    final matches = await api.matches();
+    final chats = await api.chats();
+    final discover = await api.discover();
     state = state.copyWith(
       blocked: [
         for (final person in state.blocked)
           if (person.id != userId) person,
       ],
+      matches: matches,
+      chats: chats,
+      discover: discover,
+    );
+  }
+
+  Future<void> _signOutIfNeeded(AccountFailure error) async {
+    if (error.message != 'Sign in again.') return;
+    await ref.read(sessionControllerProvider.notifier).signOut();
+  }
+
+  void _dropConversation(String userId) {
+    final messages = {...state.messages}..remove(userId);
+    _noOlder.remove(userId);
+    state = state.copyWith(
+      matches: [
+        for (final person in state.matches)
+          if (person.id != userId) person,
+      ],
+      chats: [
+        for (final chat in state.chats)
+          if (chat.person.id != userId) chat,
+      ],
+      messages: messages,
     );
   }
 

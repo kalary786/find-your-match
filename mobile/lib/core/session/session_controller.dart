@@ -10,7 +10,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 final apiBaseUrlProvider = Provider<String>((ref) => ApiConfig.baseUrl);
 
-final tokenStoreProvider = Provider<TokenStore>((ref) => PrefsTokenStore());
+final tokenStoreProvider = Provider<TokenStore>((ref) => SecureTokenStore());
 
 final matchApiProvider = Provider<MatchApi>((ref) {
   return HttpMatchApi(

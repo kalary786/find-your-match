@@ -123,8 +123,14 @@ class HttpMatchApi implements MatchApi {
   }
 
   @override
-  Future<void> deleteAccount() async {
-    _body(await _send('deleteAccount', method: 'POST'));
+  Future<void> deleteAccount({required String password}) async {
+    _body(
+      await _send(
+        'deleteAccount',
+        method: 'POST',
+        json: {'password': password},
+      ),
+    );
     await tokens.write(null);
   }
 
@@ -133,13 +139,17 @@ class HttpMatchApi implements MatchApi {
     required String currentPassword,
     required String password,
   }) async {
-    _body(
+    final body = _body(
       await _send(
         'changePassword',
         method: 'POST',
         json: {'currentPassword': currentPassword, 'password': password},
       ),
     );
+    final token = body['token']?.toString() ?? '';
+    if (token.isNotEmpty) {
+      await tokens.write(token);
+    }
   }
 
   @override
@@ -215,8 +225,16 @@ class HttpMatchApi implements MatchApi {
   }
 
   @override
-  Future<List<ChatMessage>> messages(String userId) async {
-    final body = _body(await _send('messages', query: {'userId': userId}));
+  Future<List<ChatMessage>> messages(String userId, {String? before}) async {
+    final body = _body(
+      await _send(
+        'messages',
+        query: {
+          'userId': userId,
+          if (before != null && before.isNotEmpty) 'before': before,
+        },
+      ),
+    );
     return _messages(body['messages']);
   }
 
