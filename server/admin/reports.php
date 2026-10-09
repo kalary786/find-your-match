@@ -6,10 +6,11 @@ require __DIR__ . '/_init.php';
 
 $admin = require_admin();
 $notice = null;
+$error = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrf_ok()) {
-        $notice = 'The form expired. Try again.';
+        $error = 'The form expired. Try again.';
     } else {
         $reportId = (int) ($_POST['report_id'] ?? 0);
         $action = (string) ($_POST['action'] ?? '');
@@ -18,14 +19,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $reportRow = $reported->fetch();
         $userId = $reportRow ? (int) $reportRow['reported_id'] : 0;
         if ($reportId <= 0 || !$reportRow) {
-            $notice = 'That report is not available.';
+            $error = 'That report is not available.';
         } elseif ($action === 'resolve') {
             $statement = db()->prepare('UPDATE reports SET resolved = 1 WHERE id = ?');
             $statement->execute([$reportId]);
             log_moderation((int) $admin['id'], 'report-resolve', $userId > 0 ? $userId : null, 'report ' . $reportId);
             $notice = 'Report marked reviewed.';
         } elseif ($userId <= 0) {
-            $notice = 'That reported account is already gone.';
+            $error = 'That reported account is already gone.';
         } elseif ($action === 'block') {
             $statement = db()->prepare(
                 'UPDATE users SET blocked = 1, token_hash = NULL, token_expires_at = NULL WHERE id = ?'
@@ -36,9 +37,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             log_moderation((int) $admin['id'], 'user-block', $userId, 'report ' . $reportId);
             $notice = 'User blocked.';
         } elseif ($action === 'delete') {
-            log_moderation((int) $admin['id'], 'user-delete', $userId, 'report ' . $reportId);
-            delete_user_account($userId);
-            $notice = 'User deleted.';
+            try {
+                delete_user_account($userId);
+                log_moderation((int) $admin['id'], 'user-delete', $userId, 'report ' . $reportId);
+                $notice = 'User deleted.';
+            } catch (Throwable $exception) {
+                $error = 'The user could not be deleted.';
+            }
+        } else {
+            $error = 'That action is not available.';
         }
     }
 }
@@ -55,9 +62,7 @@ $rows = db()->query(
 )->fetchAll();
 
 $body = '<h1>Reports</h1>';
-if ($notice) {
-    $body .= '<p class="ok">' . h($notice) . '</p>';
-}
+$body .= status_html($notice, $error);
 $body .= '<table><thead><tr><th>When</th><th>Reported</th><th>By</th><th>Reason</th><th>Details</th><th></th></tr></thead><tbody>';
 foreach ($rows as $row) {
     $id = (int) $row['id'];
@@ -69,22 +74,23 @@ foreach ($rows as $row) {
         . '</td><td>' . h((string) $row['reason']) . '</td><td>' . h((string) $row['details'])
         . '</td><td class="actions">';
     if ((int) $row['resolved'] === 0) {
-        $body .= report_form($id, $userId, 'resolve', 'Reviewed');
-        $body .= report_form($id, $userId, 'block', 'Block');
-        $body .= report_form($id, $userId, 'delete', 'Delete user', true);
+        $body .= report_form($id, 'resolve', 'Reviewed');
+        $body .= report_form($id, 'block', 'Block', 'Block this user? They will be signed out.');
+        $body .= report_form($id, 'delete', 'Delete user', 'Delete this user?');
     }
     $body .= '</td></tr>';
 }
 $body .= '</tbody></table>';
 layout('Reports', $body, $admin);
 
-function report_form(int $reportId, int $userId, string $action, string $label, bool $danger = false): string
+function report_form(int $reportId, string $action, string $label, string $confirmMessage = ''): string
 {
-    $class = $danger ? ' class="danger"' : '';
-    $confirm = $danger ? ' onsubmit="return confirm(\'Delete this user?\')"' : '';
+    $class = $action === 'delete' ? ' class="danger"' : '';
+    $confirm = $confirmMessage === ''
+        ? ''
+        : ' onsubmit="return confirm(\'' . h($confirmMessage) . '\')"';
     return '<form method="post"' . $confirm . '>' . csrf_field()
         . '<input type="hidden" name="report_id" value="' . $reportId . '">'
-        . '<input type="hidden" name="user_id" value="' . $userId . '">'
         . '<input type="hidden" name="action" value="' . h($action) . '">'
         . '<button type="submit"' . $class . '>' . h($label) . '</button></form>';
 }

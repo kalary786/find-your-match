@@ -6,16 +6,23 @@ require __DIR__ . '/_init.php';
 
 $admin = require_admin();
 $notice = null;
+$error = null;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!csrf_ok()) {
-        $notice = 'The form expired. Try again.';
+        $error = 'The form expired. Try again.';
     } else {
         $conversationId = (int) ($_POST['conversation_id'] ?? 0);
-        $statement = db()->prepare('DELETE FROM conversations WHERE id = ?');
-        $statement->execute([$conversationId]);
-        log_moderation((int) $admin['id'], 'chat-delete', null, 'conversation ' . $conversationId);
-        $notice = 'Chat deleted. The messages are gone.';
+        try {
+            if (!delete_conversation($conversationId)) {
+                $error = 'That chat is already gone.';
+            } else {
+                log_moderation((int) $admin['id'], 'chat-delete', null, 'conversation ' . $conversationId);
+                $notice = 'Chat deleted. The match and messages are gone.';
+            }
+        } catch (Throwable $exception) {
+            $error = 'The chat could not be deleted.';
+        }
     }
 }
 
@@ -31,9 +38,7 @@ $rows = db()->query(
 )->fetchAll();
 
 $body = '<h1>Chats</h1>';
-if ($notice) {
-    $body .= '<p class="ok">' . h($notice) . '</p>';
-}
+$body .= status_html($notice, $error);
 $body .= '<table><thead><tr><th>People</th><th>Messages</th><th>Started</th><th></th></tr></thead><tbody>';
 foreach ($rows as $row) {
     $id = (int) $row['id'];

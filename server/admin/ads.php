@@ -14,19 +14,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $action = (string) ($_POST['action'] ?? 'create');
         $adId = (int) ($_POST['ad_id'] ?? 0);
-        if ($action === 'delete') {
-            $path = db()->prepare('SELECT image_path FROM ads WHERE id = ?');
-            $path->execute([$adId]);
-            unlink_public((string) ($path->fetchColumn() ?: ''));
-            $delete = db()->prepare('DELETE FROM ads WHERE id = ?');
-            $delete->execute([$adId]);
-            log_moderation((int) $admin['id'], 'ad-delete', null, 'ad ' . $adId);
-            $notice = 'Ad removed.';
-        } elseif ($action === 'toggle') {
-            $toggle = db()->prepare('UPDATE ads SET active = IF(active = 1, 0, 1) WHERE id = ?');
-            $toggle->execute([$adId]);
-            log_moderation((int) $admin['id'], 'ad-toggle', null, 'ad ' . $adId);
-            $notice = 'Ad updated.';
+        if ($action === 'delete' || $action === 'toggle') {
+            if ($adId <= 0) {
+                $error = 'That ad is not available.';
+            } elseif ($action === 'delete') {
+                $path = db()->prepare('SELECT image_path FROM ads WHERE id = ?');
+                $path->execute([$adId]);
+                $imagePath = $path->fetchColumn();
+                if (!is_string($imagePath) || $imagePath === '') {
+                    $error = 'That ad is already gone.';
+                } else {
+                    $delete = db()->prepare('DELETE FROM ads WHERE id = ?');
+                    $delete->execute([$adId]);
+                    unlink_public($imagePath);
+                    log_moderation((int) $admin['id'], 'ad-delete', null, 'ad ' . $adId);
+                    $notice = 'Ad removed.';
+                }
+            } else {
+                $toggle = db()->prepare('UPDATE ads SET active = IF(active = 1, 0, 1) WHERE id = ?');
+                $toggle->execute([$adId]);
+                if ($toggle->rowCount() < 1) {
+                    $error = 'That ad is not available.';
+                } else {
+                    log_moderation((int) $admin['id'], 'ad-toggle', null, 'ad ' . $adId);
+                    $notice = 'Ad updated.';
+                }
+            }
         } else {
             $title = trim((string) ($_POST['title'] ?? ''));
             $link = trim((string) ($_POST['link_url'] ?? ''));
@@ -44,11 +57,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         throw new RuntimeException('Enter a full http or https link.');
                     }
                     $image = store_image($_FILES['image'], 'ads');
-                    $insert = db()->prepare(
-                        'INSERT INTO ads (title, image_path, link_url, placement, active, created_at)
-                         VALUES (?, ?, ?, ?, 1, ?)'
-                    );
-                    $insert->execute([$title, $image, $link, $placement, now()]);
+                    try {
+                        $insert = db()->prepare(
+                            'INSERT INTO ads (title, image_path, link_url, placement, active, created_at)
+                             VALUES (?, ?, ?, ?, 1, ?)'
+                        );
+                        $insert->execute([$title, $image, $link, $placement, now()]);
+                    } catch (Throwable $exception) {
+                        unlink_public($image);
+                        throw new RuntimeException('The ad could not be saved.');
+                    }
                     log_moderation((int) $admin['id'], 'ad-create', null, 'ad ' . (int) db()->lastInsertId());
                     $notice = 'Ad is on.';
                 } catch (RuntimeException $exception) {
@@ -88,7 +106,8 @@ foreach ($rows as $row) {
     if ($image) {
         $body .= '<img class="thumb" src="' . h($image) . '" alt=""> ';
     }
-    $body .= h((string) $row['title']) . '<br><a href="' . h((string) $row['link_url']) . '">'
+    $body .= h((string) $row['title']) . '<br><a href="' . h((string) $row['link_url'])
+        . '" target="_blank" rel="noopener noreferrer">'
         . h((string) $row['link_url']) . '</a></td><td>' . h((string) $row['placement'])
         . '</td><td>' . h($status) . '</td><td class="actions">
         <form method="post">' . csrf_field() . '<input type="hidden" name="action" value="toggle">

@@ -138,9 +138,9 @@ class SocialController extends Notifier<SocialState> {
       final matches = await api.matches();
       final chats = await api.chats();
       final blocked = await api.blocked();
-      final discoverAd = await api.ad('discover');
-      final searchAd = await api.ad('search');
-      final matchesAd = await api.ad('matches');
+      final discoverAd = await _optionalAd('discover');
+      final searchAd = await _optionalAd('search');
+      final matchesAd = await _optionalAd('matches');
       state = state.copyWith(
         discover: discover,
         matches: matches,
@@ -157,6 +157,14 @@ class SocialController extends Notifier<SocialState> {
       state = state.copyWith(loading: false, error: error.message);
     } finally {
       _loading = false;
+    }
+  }
+
+  Future<HostedAd?> _optionalAd(String placement) async {
+    try {
+      return await ref.read(matchApiProvider).ad(placement);
+    } on AccountFailure {
+      return null;
     }
   }
 

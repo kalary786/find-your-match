@@ -15,10 +15,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $action = (string) ($_POST['action'] ?? 'create');
         if ($action === 'delete') {
             $noticeId = (int) ($_POST['notice_id'] ?? 0);
-            $delete = db()->prepare('DELETE FROM notices WHERE id = ?');
-            $delete->execute([$noticeId]);
-            log_moderation((int) $admin['id'], 'notice-delete', null, 'notice ' . $noticeId);
-            $notice = 'Notice removed.';
+            if ($noticeId <= 0) {
+                $error = 'That notice is not available.';
+            } else {
+                $delete = db()->prepare('DELETE FROM notices WHERE id = ?');
+                $delete->execute([$noticeId]);
+                if ($delete->rowCount() < 1) {
+                    $error = 'That notice is already gone.';
+                } else {
+                    log_moderation((int) $admin['id'], 'notice-delete', null, 'notice ' . $noticeId);
+                    $notice = 'Notice removed.';
+                }
+            }
+        } elseif ($action !== 'create') {
+            $error = 'That action is not available.';
         } else {
             $title = trim((string) ($_POST['title'] ?? ''));
             $bodyText = trim((string) ($_POST['body'] ?? ''));
@@ -113,7 +123,7 @@ foreach ($rows as $row) {
     $body .= '<tr><td>' . h((string) $row['created_at']) . '</td><td>' . h($who) . '</td><td>'
         . h((string) $row['title']) . '</td><td>' . h((string) $row['body']) . '</td><td>'
         . h((string) $row['link_url']) . '</td><td>';
-    $body .= '<form method="post">' . csrf_field()
+    $body .= '<form method="post" onsubmit="return confirm(\'Remove this notice?\')">' . csrf_field()
         . '<input type="hidden" name="action" value="delete">'
         . '<input type="hidden" name="notice_id" value="' . (int) $row['id'] . '">'
         . '<button class="danger" type="submit">Delete</button></form>';

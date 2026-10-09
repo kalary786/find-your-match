@@ -3,6 +3,7 @@ import 'package:find_your_match/core/session/session_controller.dart';
 import 'package:find_your_match/core/widgets/error_state.dart';
 import 'package:find_your_match/core/widgets/interest_wrap.dart';
 import 'package:find_your_match/core/widgets/person_avatar.dart';
+import 'package:find_your_match/features/notices/notices_page.dart';
 import 'package:find_your_match/features/preview/preview_models.dart';
 import 'package:find_your_match/features/profile/account_failure.dart';
 import 'package:find_your_match/features/profile/api_account_actions.dart';
@@ -65,6 +66,14 @@ class _ProfileScaffoldState extends ConsumerState<_ProfileScaffold> {
   var _busy = false;
   String? _error;
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(noticeControllerProvider.notifier).refresh();
+    });
+  }
+
   Future<void> _setHidden(bool value) async {
     setState(() {
       _busy = true;
@@ -83,6 +92,7 @@ class _ProfileScaffoldState extends ConsumerState<_ProfileScaffold> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final hidden = ref.watch(savedAccountProvider)?.hidden ?? widget.hidden;
+    final unread = ref.watch(noticeControllerProvider).unread;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Profile'),
@@ -144,7 +154,11 @@ class _ProfileScaffoldState extends ConsumerState<_ProfileScaffold> {
             contentPadding: EdgeInsets.zero,
             leading: const Icon(Icons.notifications_outlined),
             title: const Text('Notifications'),
-            subtitle: const Text('Messages and links from the app'),
+            subtitle: Text(
+              unread == 0
+                  ? 'Messages and links from the app'
+                  : '$unread unread',
+            ),
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push(AppRoutes.notices),
           ),

@@ -1,3 +1,4 @@
+import 'package:find_your_match/features/ads/external_link.dart';
 import 'package:find_your_match/core/api/match_api.dart';
 import 'package:find_your_match/core/routing/app_routes.dart';
 import 'package:find_your_match/core/session/session_controller.dart';
@@ -7,7 +8,6 @@ import 'package:find_your_match/features/social/social_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class NoticeState {
   const NoticeState({this.notices = const [], this.loaded = false});
@@ -35,21 +35,19 @@ class NoticeController extends Notifier<NoticeState> {
     }
   }
 
-  Future<void> markAllRead() async {
-    final unread = state.notices.where((notice) => !notice.read).toList();
-    if (unread.isEmpty) return;
-    final api = ref.read(matchApiProvider);
-    for (final notice in unread) {
-      try {
-        await api.readNotice(notice.id);
-      } on AccountFailure {
-        return;
-      }
+  Future<void> markRead(String id) async {
+    final current = state.notices.where((notice) => notice.id == id && !notice.read);
+    if (current.isEmpty) return;
+    try {
+      await ref.read(matchApiProvider).readNotice(id);
+    } on AccountFailure {
+      return;
     }
     state = NoticeState(
       loaded: true,
       notices: [
-        for (final notice in state.notices) notice.copyWith(read: true),
+        for (final notice in state.notices)
+          if (notice.id == id) notice.copyWith(read: true) else notice,
       ],
     );
   }
@@ -101,10 +99,8 @@ class _NoticesPageState extends ConsumerState<NoticesPage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final notices = ref.read(noticeControllerProvider.notifier);
-      await notices.refresh();
-      await notices.markAllRead();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(noticeControllerProvider.notifier).refresh();
     });
   }
 
@@ -127,7 +123,12 @@ class _NoticesPageState extends ConsumerState<NoticesPage> {
               separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 final notice = state.notices[index];
-                return _NoticeCard(notice: notice);
+                return _NoticeCard(
+                  notice: notice,
+                  onRead: () => ref
+                      .read(noticeControllerProvider.notifier)
+                      .markRead(notice.id),
+                );
               },
             ),
     );
@@ -135,48 +136,51 @@ class _NoticesPageState extends ConsumerState<NoticesPage> {
 }
 
 class _NoticeCard extends StatelessWidget {
-  const _NoticeCard({required this.notice});
+  const _NoticeCard({required this.notice, required this.onRead});
 
   final AppNotice notice;
+  final VoidCallback onRead;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final link = Uri.tryParse(notice.linkUrl);
-    final canOpen = link != null && (link.isScheme('https') || link.isScheme('http'));
+    final canOpen = externalHttpUri(notice.linkUrl) != null;
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              notice.title,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(notice.body, style: theme.textTheme.bodyLarge),
-            const SizedBox(height: 8),
-            Text(
-              notice.timeLabel,
-              style: theme.textTheme.labelMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-            if (canOpen) ...[
-              const SizedBox(height: 12),
-              FilledButton.tonalIcon(
-                onPressed: () => launchUrl(
-                  link,
-                  mode: LaunchMode.externalApplication,
+      child: InkWell(
+        onTap: onRead,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                notice.title,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: notice.read ? FontWeight.w600 : FontWeight.w800,
                 ),
-                icon: const Icon(Icons.open_in_new),
-                label: const Text('Open link'),
               ),
+              const SizedBox(height: 6),
+              Text(notice.body, style: theme.textTheme.bodyLarge),
+              const SizedBox(height: 8),
+              Text(
+                notice.timeLabel,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+              if (canOpen) ...[
+                const SizedBox(height: 12),
+                FilledButton.tonalIcon(
+                  onPressed: () {
+                    onRead();
+                    openExternalLink(notice.linkUrl);
+                  },
+                  icon: const Icon(Icons.open_in_new),
+                  label: const Text('Open link'),
+                ),
+              ],
             ],
-          ],
+          ),
         ),
       ),
     );

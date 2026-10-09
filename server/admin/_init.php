@@ -61,6 +61,18 @@ function h(string $value): string
     return htmlspecialchars($value, ENT_QUOTES, 'UTF-8');
 }
 
+function status_html(?string $notice, ?string $error): string
+{
+    $html = '';
+    if ($error) {
+        $html .= '<p class="error">' . h($error) . '</p>';
+    }
+    if ($notice) {
+        $html .= '<p class="ok">' . h($notice) . '</p>';
+    }
+    return $html;
+}
+
 function layout(string $title, string $body, ?array $admin): void
 {
     $nav = '';

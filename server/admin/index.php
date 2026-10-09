@@ -13,17 +13,26 @@ $error = null;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $email = strtolower(trim((string) ($_POST['email'] ?? '')));
     $password = (string) ($_POST['password'] ?? '');
-    $statement = db()->prepare('SELECT id, password_hash FROM admins WHERE email = ? LIMIT 1');
-    $statement->execute([$email]);
-    $admin = $statement->fetch();
-    if (!$admin || !password_verify($password, (string) $admin['password_hash'])) {
-        $error = 'Email or password is incorrect.';
+    $emailKey = 'admin-email:' . $email;
+    $ipKey = 'admin-ip:' . client_ip();
+    if (rate_limit_blocked('admin-login', $emailKey, 8, 900) || rate_limit_blocked('admin-login', $ipKey, 30, 900)) {
+        $error = 'Too many sign-in attempts. Try again later.';
     } else {
-        session_regenerate_id(true);
-        $_SESSION['admin_id'] = (int) $admin['id'];
-        csrf_token();
-        header('Location: users.php');
-        exit;
+        $statement = db()->prepare('SELECT id, password_hash FROM admins WHERE email = ? LIMIT 1');
+        $statement->execute([$email]);
+        $admin = $statement->fetch();
+        if (!$admin || !password_verify($password, (string) $admin['password_hash'])) {
+            rate_limit_record('admin-login', $emailKey);
+            rate_limit_record('admin-login', $ipKey);
+            $error = 'Email or password is incorrect.';
+        } else {
+            rate_limit_clear('admin-login', $emailKey);
+            session_regenerate_id(true);
+            $_SESSION['admin_id'] = (int) $admin['id'];
+            csrf_token();
+            header('Location: users.php');
+            exit;
+        }
     }
 }
 

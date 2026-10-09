@@ -145,7 +145,11 @@ function optional_link(string $value): string
     if ($link === '') {
         return '';
     }
-    if (strlen($link) > 500 || !preg_match('#^https?://#i', $link)) {
+    $parts = parse_url($link);
+    $scheme = is_array($parts) ? strtolower((string) ($parts['scheme'] ?? '')) : '';
+    $host = is_array($parts) ? (string) ($parts['host'] ?? '') : '';
+    $hostOk = $host !== '' && preg_match('/^[A-Za-z0-9.-]+$/', $host) === 1;
+    if (strlen($link) > 500 || preg_match('/[\s\x00-\x1F]/', $link) || !in_array($scheme, ['http', 'https'], true) || !$hostOk) {
         throw new RuntimeException('Use a full http or https link, or leave the link empty.');
     }
     return $link;
@@ -610,6 +614,45 @@ function delete_user_account(int $userId): void
     if ($profile) {
         unlink_public($profile['photo_path'] ?? null);
     }
+}
+
+function delete_conversation(int $conversationId): bool
+{
+    if ($conversationId <= 0) {
+        return false;
+    }
+    $pdo = db();
+    $found = $pdo->prepare(
+        'SELECT match_id, user_low, user_high FROM conversations WHERE id = ? LIMIT 1'
+    );
+    $found->execute([$conversationId]);
+    $row = $found->fetch();
+    if (!$row) {
+        return false;
+    }
+    $pdo->beginTransaction();
+    try {
+        $match = $pdo->prepare('DELETE FROM matches WHERE id = ?');
+        $match->execute([(int) $row['match_id']]);
+        $swipes = $pdo->prepare(
+            'DELETE FROM swipes
+             WHERE (from_user_id = ? AND to_user_id = ?)
+                OR (from_user_id = ? AND to_user_id = ?)'
+        );
+        $swipes->execute([
+            (int) $row['user_low'],
+            (int) $row['user_high'],
+            (int) $row['user_high'],
+            (int) $row['user_low'],
+        ]);
+        $pdo->commit();
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $error;
+    }
+    return true;
 }
 
 function touch_active(int $userId): void

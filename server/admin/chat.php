@@ -20,12 +20,23 @@ if (!$conversation) {
     exit;
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && csrf_ok()) {
-    $delete = db()->prepare('DELETE FROM conversations WHERE id = ?');
-    $delete->execute([$id]);
-    log_moderation((int) $admin['id'], 'chat-delete', null, 'conversation ' . $id);
-    header('Location: chats.php');
-    exit;
+$error = null;
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    if (!csrf_ok()) {
+        $error = 'The form expired. Try again.';
+    } else {
+        try {
+            if (!delete_conversation($id)) {
+                $error = 'That chat is already gone.';
+            } else {
+                log_moderation((int) $admin['id'], 'chat-delete', null, 'conversation ' . $id);
+                header('Location: chats.php');
+                exit;
+            }
+        } catch (Throwable $exception) {
+            $error = 'The chat could not be deleted.';
+        }
+    }
 }
 
 $messages = db()->prepare(
@@ -38,6 +49,7 @@ $messages = db()->prepare(
 $messages->execute([$id]);
 
 $body = '<h1>' . h((string) $conversation['low_name']) . ' and ' . h((string) $conversation['high_name']) . '</h1>';
+$body .= status_html(null, $error);
 $body .= '<p><a href="chats.php">Back to chats</a></p><div class="thread">';
 foreach ($messages->fetchAll() as $message) {
     $body .= '<article><strong>' . h((string) $message['username']) . '</strong> <time>'
