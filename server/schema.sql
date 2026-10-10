@@ -133,6 +133,37 @@ CREATE TABLE IF NOT EXISTS ads (
   created_at DATETIME NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS network_ad_settings (
+  id TINYINT UNSIGNED NOT NULL PRIMARY KEY,
+  banner_enabled TINYINT(1) NOT NULL DEFAULT 0,
+  interstitial_enabled TINYINT(1) NOT NULL DEFAULT 0,
+  admob_app_id VARCHAR(80) NOT NULL DEFAULT '',
+  admob_banner_unit VARCHAR(80) NOT NULL DEFAULT '',
+  admob_interstitial_unit VARCHAR(80) NOT NULL DEFAULT '',
+  admob_app_open_unit VARCHAR(80) NOT NULL DEFAULT '',
+  admob_in_chats TINYINT(1) NOT NULL DEFAULT 0,
+  appnext_banner VARCHAR(120) NOT NULL DEFAULT '',
+  appnext_interstitial VARCHAR(120) NOT NULL DEFAULT '',
+  appnext_type VARCHAR(24) NOT NULL DEFAULT 'interstitial',
+  facebook_banner VARCHAR(120) NOT NULL DEFAULT '',
+  facebook_interstitial VARCHAR(120) NOT NULL DEFAULT '',
+  startio_app_id VARCHAR(120) NOT NULL DEFAULT '',
+  unity_game_id VARCHAR(80) NOT NULL DEFAULT '',
+  unity_banner_placement VARCHAR(80) NOT NULL DEFAULT '',
+  unity_interstitial_placement VARCHAR(80) NOT NULL DEFAULT '',
+  ironsource_app_key VARCHAR(80) NOT NULL DEFAULT '',
+  wortise_app_id VARCHAR(80) NOT NULL DEFAULT '',
+  wortise_banner_unit VARCHAR(80) NOT NULL DEFAULT '',
+  wortise_interstitial_unit VARCHAR(80) NOT NULL DEFAULT '',
+  monetag_link VARCHAR(500) NOT NULL DEFAULT '',
+  banner_position VARCHAR(8) NOT NULL DEFAULT 'bottom',
+  banner_size VARCHAR(8) NOT NULL DEFAULT 'normal',
+  page_interval TINYINT UNSIGNED NOT NULL DEFAULT 4,
+  chat_interval TINYINT UNSIGNED NOT NULL DEFAULT 20,
+  launch_interval TINYINT UNSIGNED NOT NULL DEFAULT 4,
+  show_first_launch TINYINT(1) NOT NULL DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS auth_attempts (
   id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
   action VARCHAR(32) NOT NULL,

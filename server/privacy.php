@@ -15,7 +15,7 @@ render_public_page('Privacy', <<<'HTML'
 <h2>Who can see it</h2>
 <p>Other people can see a profile that is not hidden, except people you blocked and people who blocked you. Chat is only between a matched pair. An admin can open users, chats, reports, and ads from the admin panel.</p>
 <h2>Ads</h2>
-<p>Ads are images uploaded in the admin panel for Discover, Search, and Matches. This build does not use an advertising network, and it does not send your profile to one.</p>
+<p>Image ads uploaded in the admin panel can appear on Discover, Search, and Matches. If network ads are turned on, the app can also request AdMob ads or open a Monetag link. Those companies then receive the ad request under their own policies. Reports and account deletion do not show ads.</p>
 <h2>Deletion</h2>
 <p>Delete the account in the app under Settings, or on the <a href="delete-account.php">delete account</a> page with the same email and password. That removes the profile, photo, likes, matches, and chats from this website.</p>
 HTML);

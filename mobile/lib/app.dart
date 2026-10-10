@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:find_your_match/core/routing/app_router.dart';
+import 'package:find_your_match/features/ads/network_ad_host.dart';
 import 'package:find_your_match/core/session/session_controller.dart';
 import 'package:find_your_match/core/theme/app_theme.dart';
 import 'package:find_your_match/core/theme/theme_mode_controller.dart';
@@ -39,6 +40,9 @@ class _FindYourMatchAppState extends ConsumerState<FindYourMatchApp> {
       darkTheme: AppTheme.dark(),
       themeMode: themeMode,
       routerConfig: router,
+      builder: (context, child) {
+        return NetworkAdHost(child: child ?? const SizedBox.shrink());
+      },
     );
   }
 }

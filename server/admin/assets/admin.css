@@ -134,3 +134,26 @@ time {
   color: #6d645b;
   font-size: 0.85rem;
 }
+
+form.ads-settings {
+  max-width: 640px;
+}
+
+label.check {
+  font-size: 1.15rem;
+}
+
+label.check input,
+input[type="checkbox"] {
+  display: inline-block;
+  width: auto;
+  margin: 0 8px 0 0;
+  vertical-align: middle;
+}
+
+.hint {
+  display: block;
+  margin-top: 4px;
+  color: #5c564e;
+  font-weight: 500;
+}

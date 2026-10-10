@@ -1,3 +1,4 @@
+import 'package:find_your_match/features/ads/network_ad_settings.dart';
 import 'package:find_your_match/features/preview/preview_models.dart';
 import 'package:find_your_match/features/profile/profile_draft.dart';
 import 'package:find_your_match/features/profile/saved_account.dart';
@@ -142,6 +143,8 @@ abstract class MatchApi {
   });
 
   Future<HostedAd?> ad(String placement);
+
+  Future<NetworkAdSettings> networkAds();
 
   Future<List<AppNotice>> notices();
 

@@ -85,7 +85,7 @@ void main() {
     expect(find.byType(InkWell), findsNothing);
   });
 
-  test('custom ads stay off chat, report, and delete, and AdMob is absent', () {
+  test('custom image ads stay off chat, report, and delete', () {
     final adWidget = File('lib/features/ads/placement_ad.dart').readAsStringSync();
     expect(adWidget, contains('externalHttpUri'));
     expect(adWidget, contains('cacheWidth'));
@@ -93,7 +93,7 @@ void main() {
       File('lib/features/ads/external_link.dart').readAsStringSync(),
       contains('LaunchMode.externalApplication'),
     );
-    expect(File('pubspec.yaml').readAsStringSync(), isNot(contains('google_mobile_ads')));
+    expect(File('pubspec.yaml').readAsStringSync(), contains('google_mobile_ads'));
     for (final path in [
       'lib/features/chat/chat_room_page.dart',
       'lib/features/chat/chats_page.dart',
@@ -101,6 +101,12 @@ void main() {
       'lib/features/safety/delete_account_page.dart',
     ]) {
       expect(File(path).readAsStringSync(), isNot(contains('PlacementAd')));
+    }
+    for (final path in [
+      'lib/features/safety/report_user_page.dart',
+      'lib/features/safety/delete_account_page.dart',
+    ]) {
+      expect(File(path).readAsStringSync(), isNot(contains('NetworkBanner')));
     }
     for (final path in [
       'lib/features/discover/discover_page.dart',
@@ -121,6 +127,7 @@ void main() {
       'chat.php',
       'reports.php',
       'ads.php',
+      'network_ads.php',
       'notices.php',
     ]) {
       final source = File('$root/admin/$name').readAsStringSync();
@@ -139,6 +146,20 @@ void main() {
     final notices = File('$root/admin/notices.php').readAsStringSync();
     expect(notices, contains('Remove this notice?'));
     expect(notices, contains('optional_link'));
+    final networkAds = File('$root/admin/network_ads.php').readAsStringSync();
+    expect(networkAds, contains('banner_enabled'));
+    expect(networkAds, contains('interstitial_enabled'));
+    expect(networkAds, contains('monetag_link'));
+    expect(networkAds, contains('Show every 4 pages'));
+    expect(networkAds, contains('Show every 20 messages sent'));
+    expect(networkAds, contains('Save network ads'));
+    final bootstrap = File('$root/lib/bootstrap.php').readAsStringSync();
+    expect(bootstrap, contains('function network_ad_from_post'));
+    expect(bootstrap, contains('optional_link((string) (\$post[\'monetag_link\']'));
+    expect(bootstrap, contains('admob_in_chats'));
+    final api = File('$root/api/index.php').readAsStringSync();
+    expect(api, contains("'networkAds' => list_network_ads()"));
+    expect(api, contains('function list_network_ads'));
     final ads = File('$root/admin/ads.php').readAsStringSync();
     expect(ads, contains('optional_link'));
     expect(ads, contains('store_image'));
@@ -147,11 +168,9 @@ void main() {
     final chats = File('$root/admin/chats.php').readAsStringSync();
     expect(chats, contains('delete_conversation'));
     expect(chats, contains('Delete this chat and its messages?'));
-    final api = File('$root/api/index.php').readAsStringSync();
     final listAds = api.substring(api.indexOf('function list_ads'));
     expect(listAds, contains('active = 1'));
     expect(listAds, contains('AD_PLACEMENTS'));
-    final bootstrap = File('$root/lib/bootstrap.php').readAsStringSync();
     expect(bootstrap, contains('function delete_conversation'));
     expect(bootstrap, contains('DELETE FROM matches'));
     expect(bootstrap, contains('DELETE FROM swipes'));

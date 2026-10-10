@@ -1,4 +1,5 @@
 import 'package:find_your_match/core/api/match_api.dart';
+import 'package:find_your_match/features/ads/network_ad_settings.dart';
 import 'package:find_your_match/features/preview/preview_models.dart';
 import 'package:find_your_match/features/profile/account_failure.dart';
 import 'package:find_your_match/features/profile/profile_draft.dart';
@@ -171,6 +172,11 @@ class FakeMatchApi implements MatchApi {
 
   @override
   Future<HostedAd?> ad(String placement) => _missing();
+
+  NetworkAdSettings networkAdResult = NetworkAdSettings.off;
+
+  @override
+  Future<NetworkAdSettings> networkAds() async => networkAdResult;
 
   List<AppNotice> noticeResult = const [];
   List<String> readIds = [];

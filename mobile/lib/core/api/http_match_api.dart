@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:find_your_match/core/api/match_api.dart';
+import 'package:find_your_match/features/ads/network_ad_settings.dart';
 import 'package:find_your_match/core/api/token_store.dart';
 import 'package:find_your_match/features/preview/preview_models.dart';
 import 'package:find_your_match/features/profile/account_failure.dart';
@@ -311,6 +312,12 @@ class HttpMatchApi implements MatchApi {
   @override
   Future<void> readNotice(String id) async {
     _body(await _send('readNotice', method: 'POST', json: {'id': id}));
+  }
+
+  @override
+  Future<NetworkAdSettings> networkAds() async {
+    final body = _body(await _send('networkAds'));
+    return NetworkAdSettings.fromJson(body);
   }
 
   @override

@@ -38,6 +38,7 @@ try {
         'blocked' => list_blocked(),
         'report' => report_user(),
         'ads' => list_ads(),
+        'networkAds' => list_network_ads(),
         'notices' => list_notices(),
         'readNotice' => read_notice(),
         default => fail(404, 'not-found', 'That action is not available.'),
@@ -716,6 +717,12 @@ function report_user(): void
     );
     $statement->execute([$userId, $peerId, $reason, $details, now()]);
     json_out(['ok' => true]);
+}
+
+function list_network_ads(): void
+{
+    current_user();
+    json_out(network_ad_public(network_ad_row()));
 }
 
 function list_ads(): void

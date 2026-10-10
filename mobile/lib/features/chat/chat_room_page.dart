@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:find_your_match/core/routing/app_routes.dart';
+import 'package:find_your_match/features/ads/network_ad_controller.dart';
+import 'package:find_your_match/features/ads/network_banner.dart';
 import 'package:find_your_match/features/preview/preview_models.dart';
 import 'package:find_your_match/features/profile/account_failure.dart';
 import 'package:find_your_match/features/social/social_store.dart';
@@ -98,6 +100,7 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage>
       await ref
           .read(socialControllerProvider.notifier)
           .sendMessage(widget.userId, text);
+      ref.read(networkAdControllerProvider.notifier).onMessageSent();
     } on AccountFailure catch (error) {
       if (!mounted) return;
       _text.text = text;
@@ -130,6 +133,11 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage>
       );
     }
     final messages = social.messages[person.id] ?? const <ChatMessage>[];
+    final bannerAtTop = ref
+        .watch(networkAdControllerProvider)
+        .settings
+        .bannerAtTop;
+    const chatBanner = NetworkBanner(inChat: true);
     return Scaffold(
       appBar: AppBar(
         title: Text(person.displayName),
@@ -164,6 +172,7 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage>
       ),
       body: Column(
         children: [
+          if (bannerAtTop) chatBanner,
           Expanded(
             child: ListView.builder(
               controller: _scroll,
@@ -221,6 +230,7 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage>
               },
             ),
           ),
+          if (!bannerAtTop) chatBanner,
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),

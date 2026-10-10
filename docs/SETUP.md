@@ -33,7 +33,7 @@ Chat, report, and account deletion do not show ads.
 
 ## AdMob
 
-Not wired. Ads in the app are the images you upload in the admin panel.
+Network banners, interstitials, and app-open ads are set on the admin page Network ads. This build requests AdMob and can open a Monetag direct link. IDs for the other networks on that page are saved. The Android app includes Google's test AdMob application ID until you replace it with yours and rebuild. Image ads uploaded on the Ads page still appear on Discover, Search, and Matches.
 
 ## Play Console
 

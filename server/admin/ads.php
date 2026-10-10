@@ -78,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $rows = db()->query('SELECT * FROM ads ORDER BY id DESC LIMIT 100')->fetchAll();
-$body = '<h1>Ads</h1><p>Ads can appear on Discover, Search, and Matches. Chat, reports, and account deletion stay clear.</p>';
+$body = '<h1>Ads</h1><p>These image ads can appear on Discover, Search, and Matches. Chat, reports, and account deletion stay clear. Banners and full-screen ads from ad networks are on <a href="network_ads.php">Network ads</a>.</p>';
 if ($notice) {
     $body .= '<p class="ok">' . h($notice) . '</p>';
 }

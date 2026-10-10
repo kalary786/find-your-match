@@ -117,6 +117,38 @@ function ensure_runtime_tables(PDO $pdo): void
     ensure_index($pdo, 'users', 'users_token_hash', 'ALTER TABLE users ADD INDEX users_token_hash (token_hash)');
     ensure_index($pdo, 'messages', 'messages_sender_day', 'ALTER TABLE messages ADD INDEX messages_sender_day (sender_id, created_at)');
     ensure_index($pdo, 'blocks', 'blocks_blocked', 'ALTER TABLE blocks ADD INDEX blocks_blocked (blocked_id)');
+    $pdo->exec(
+        'CREATE TABLE IF NOT EXISTS network_ad_settings (
+          id TINYINT UNSIGNED NOT NULL PRIMARY KEY,
+          banner_enabled TINYINT(1) NOT NULL DEFAULT 0,
+          interstitial_enabled TINYINT(1) NOT NULL DEFAULT 0,
+          admob_app_id VARCHAR(80) NOT NULL DEFAULT \'\',
+          admob_banner_unit VARCHAR(80) NOT NULL DEFAULT \'\',
+          admob_interstitial_unit VARCHAR(80) NOT NULL DEFAULT \'\',
+          admob_app_open_unit VARCHAR(80) NOT NULL DEFAULT \'\',
+          admob_in_chats TINYINT(1) NOT NULL DEFAULT 0,
+          appnext_banner VARCHAR(120) NOT NULL DEFAULT \'\',
+          appnext_interstitial VARCHAR(120) NOT NULL DEFAULT \'\',
+          appnext_type VARCHAR(24) NOT NULL DEFAULT \'interstitial\',
+          facebook_banner VARCHAR(120) NOT NULL DEFAULT \'\',
+          facebook_interstitial VARCHAR(120) NOT NULL DEFAULT \'\',
+          startio_app_id VARCHAR(120) NOT NULL DEFAULT \'\',
+          unity_game_id VARCHAR(80) NOT NULL DEFAULT \'\',
+          unity_banner_placement VARCHAR(80) NOT NULL DEFAULT \'\',
+          unity_interstitial_placement VARCHAR(80) NOT NULL DEFAULT \'\',
+          ironsource_app_key VARCHAR(80) NOT NULL DEFAULT \'\',
+          wortise_app_id VARCHAR(80) NOT NULL DEFAULT \'\',
+          wortise_banner_unit VARCHAR(80) NOT NULL DEFAULT \'\',
+          wortise_interstitial_unit VARCHAR(80) NOT NULL DEFAULT \'\',
+          monetag_link VARCHAR(500) NOT NULL DEFAULT \'\',
+          banner_position VARCHAR(8) NOT NULL DEFAULT \'bottom\',
+          banner_size VARCHAR(8) NOT NULL DEFAULT \'normal\',
+          page_interval TINYINT UNSIGNED NOT NULL DEFAULT 4,
+          chat_interval TINYINT UNSIGNED NOT NULL DEFAULT 20,
+          launch_interval TINYINT UNSIGNED NOT NULL DEFAULT 4,
+          show_first_launch TINYINT(1) NOT NULL DEFAULT 1
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
+    );
 }
 
 function ensure_column(PDO $pdo, string $table, string $column, string $definition): void
@@ -137,6 +169,121 @@ function ensure_index(PDO $pdo, string $table, string $name, string $sql): void
         return;
     }
     $pdo->exec($sql);
+}
+
+function ad_network_token(string $value, int $max = 120): string
+{
+    $token = trim($value);
+    if ($token === '') {
+        return '';
+    }
+    if (strlen($token) > $max || preg_match('/^[A-Za-z0-9._~:\/+-]+$/', $token) !== 1) {
+        throw new RuntimeException('Use an ad ID with letters, numbers, and . _ ~ : / + - only.');
+    }
+    return $token;
+}
+
+function network_ad_row(): array
+{
+    $row = db()->query('SELECT * FROM network_ad_settings WHERE id = 1')->fetch();
+    if ($row) {
+        return $row;
+    }
+    db()->exec('INSERT INTO network_ad_settings (id) VALUES (1)');
+    $created = db()->query('SELECT * FROM network_ad_settings WHERE id = 1')->fetch();
+    return $created ?: [];
+}
+
+function network_ad_from_post(array $post): array
+{
+    $flag = static function (string $name) use ($post): int {
+        $value = (string) ($post[$name] ?? '');
+        return $value === '1' || $value === 'on' ? 1 : 0;
+    };
+    $token = static function (string $name, int $max = 120) use ($post): string {
+        return ad_network_token((string) ($post[$name] ?? ''), $max);
+    };
+    $one = static function (string $name, array $allowed, string $fallback) use ($post): string {
+        $value = (string) ($post[$name] ?? '');
+        return in_array($value, $allowed, true) ? $value : $fallback;
+    };
+    $interval = static function (string $name, array $allowed, int $fallback) use ($post): int {
+        $value = (int) ($post[$name] ?? $fallback);
+        return in_array($value, $allowed, true) ? $value : $fallback;
+    };
+    return [
+        'banner_enabled' => $flag('banner_enabled'),
+        'interstitial_enabled' => $flag('interstitial_enabled'),
+        'admob_app_id' => $token('admob_app_id', 80),
+        'admob_banner_unit' => $token('admob_banner_unit', 80),
+        'admob_interstitial_unit' => $token('admob_interstitial_unit', 80),
+        'admob_app_open_unit' => $token('admob_app_open_unit', 80),
+        'admob_in_chats' => $flag('admob_in_chats'),
+        'appnext_banner' => $token('appnext_banner'),
+        'appnext_interstitial' => $token('appnext_interstitial'),
+        'appnext_type' => $one('appnext_type', ['interstitial', 'native'], 'interstitial'),
+        'facebook_banner' => $token('facebook_banner'),
+        'facebook_interstitial' => $token('facebook_interstitial'),
+        'startio_app_id' => $token('startio_app_id'),
+        'unity_game_id' => $token('unity_game_id', 80),
+        'unity_banner_placement' => $token('unity_banner_placement', 80),
+        'unity_interstitial_placement' => $token('unity_interstitial_placement', 80),
+        'ironsource_app_key' => $token('ironsource_app_key', 80),
+        'wortise_app_id' => $token('wortise_app_id', 80),
+        'wortise_banner_unit' => $token('wortise_banner_unit', 80),
+        'wortise_interstitial_unit' => $token('wortise_interstitial_unit', 80),
+        'monetag_link' => optional_link((string) ($post['monetag_link'] ?? '')),
+        'banner_position' => $one('banner_position', ['top', 'bottom'], 'bottom'),
+        'banner_size' => $one('banner_size', ['normal', 'large'], 'normal'),
+        'page_interval' => $interval('page_interval', [0, 2, 3, 4, 5, 8, 10], 4),
+        'chat_interval' => $interval('chat_interval', [0, 10, 20, 30, 50], 20),
+        'launch_interval' => $interval('launch_interval', [0, 2, 3, 4, 5], 4),
+        'show_first_launch' => $flag('show_first_launch'),
+    ];
+}
+
+function replace_network_ad_settings(array $input): void
+{
+    network_ad_row();
+    $columns = array_keys($input);
+    $sql = 'UPDATE network_ad_settings SET '
+        . implode(', ', array_map(static fn (string $column) => '`' . $column . '` = ?', $columns))
+        . ' WHERE id = 1';
+    $statement = db()->prepare($sql);
+    $statement->execute(array_values($input));
+}
+
+function network_ad_public(array $row): array
+{
+    return [
+        'bannerEnabled' => (int) ($row['banner_enabled'] ?? 0) === 1,
+        'interstitialEnabled' => (int) ($row['interstitial_enabled'] ?? 0) === 1,
+        'admobAppId' => (string) ($row['admob_app_id'] ?? ''),
+        'admobBannerUnit' => (string) ($row['admob_banner_unit'] ?? ''),
+        'admobInterstitialUnit' => (string) ($row['admob_interstitial_unit'] ?? ''),
+        'admobAppOpenUnit' => (string) ($row['admob_app_open_unit'] ?? ''),
+        'admobInChats' => (int) ($row['admob_in_chats'] ?? 0) === 1,
+        'appnextBanner' => (string) ($row['appnext_banner'] ?? ''),
+        'appnextInterstitial' => (string) ($row['appnext_interstitial'] ?? ''),
+        'appnextType' => (string) ($row['appnext_type'] ?? 'interstitial'),
+        'facebookBanner' => (string) ($row['facebook_banner'] ?? ''),
+        'facebookInterstitial' => (string) ($row['facebook_interstitial'] ?? ''),
+        'startioAppId' => (string) ($row['startio_app_id'] ?? ''),
+        'unityGameId' => (string) ($row['unity_game_id'] ?? ''),
+        'unityBannerPlacement' => (string) ($row['unity_banner_placement'] ?? ''),
+        'unityInterstitialPlacement' => (string) ($row['unity_interstitial_placement'] ?? ''),
+        'ironsourceAppKey' => (string) ($row['ironsource_app_key'] ?? ''),
+        'wortiseAppId' => (string) ($row['wortise_app_id'] ?? ''),
+        'wortiseBannerUnit' => (string) ($row['wortise_banner_unit'] ?? ''),
+        'wortiseInterstitialUnit' => (string) ($row['wortise_interstitial_unit'] ?? ''),
+        'monetagLink' => (string) ($row['monetag_link'] ?? ''),
+        'bannerPosition' => (string) ($row['banner_position'] ?? 'bottom'),
+        'bannerSize' => (string) ($row['banner_size'] ?? 'normal'),
+        'pageInterval' => (int) ($row['page_interval'] ?? 4),
+        'chatInterval' => (int) ($row['chat_interval'] ?? 20),
+        'launchInterval' => (int) ($row['launch_interval'] ?? 4),
+        'showFirstLaunch' => (int) ($row['show_first_launch'] ?? 1) === 1,
+    ];
 }
 
 function optional_link(string $value): string
