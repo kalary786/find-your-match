@@ -1,3 +1,4 @@
+import 'package:find_your_match/core/theme/app_colors.dart';
 import 'package:flutter/material.dart';
 
 class EmptyState extends StatelessWidget {
@@ -26,7 +27,19 @@ class EmptyState extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(icon, size: 48, color: theme.colorScheme.primary),
+                    Container(
+                      width: 88,
+                      height: 88,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: AppColors.coral.withValues(alpha: 0.12),
+                      ),
+                      child: Icon(
+                        icon,
+                        size: 40,
+                        color: theme.colorScheme.primary,
+                      ),
+                    ),
                     const SizedBox(height: 16),
                     Text(
                       title,

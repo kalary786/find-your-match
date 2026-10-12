@@ -1,25 +1,91 @@
+import 'package:find_your_match/core/theme/app_colors.dart';
 import 'package:find_your_match/features/preview/preview_models.dart';
 import 'package:flutter/material.dart';
 
 class PersonAvatar extends StatelessWidget {
-  const PersonAvatar({required this.person, this.size = 48, super.key});
+  const PersonAvatar({
+    required this.person,
+    this.size = 48,
+    this.showOnline = false,
+    super.key,
+  });
 
   final Person person;
   final double size;
+  final bool showOnline;
 
   @override
   Widget build(BuildContext context) {
     final color = HSLColor.fromAHSL(1, person.hue, 0.48, 0.42).toColor();
-    return CircleAvatar(
-      radius: size / 2,
-      backgroundColor: color,
-      child: Text(
-        person.initials,
-        style: TextStyle(
-          color: Colors.white,
-          fontWeight: FontWeight.w800,
-          fontSize: size * 0.32,
-        ),
+    final photo = person.photoUrl;
+    final cacheWidth = (size * MediaQuery.devicePixelRatioOf(context)).round();
+    final avatar = ClipOval(
+      child: SizedBox(
+        width: size,
+        height: size,
+        child: photo == null || photo.isEmpty
+            ? ColoredBox(
+                color: color,
+                child: Center(
+                  child: Text(
+                    person.initials,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                      fontSize: size * 0.32,
+                    ),
+                  ),
+                ),
+              )
+            : Image.network(
+                photo,
+                width: size,
+                height: size,
+                fit: BoxFit.cover,
+                cacheWidth: cacheWidth,
+                errorBuilder: (context, error, stackTrace) {
+                  return ColoredBox(
+                    color: color,
+                    child: Center(
+                      child: Text(
+                        person.initials,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: size * 0.32,
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              ),
+      ),
+    );
+
+    if (!showOnline || !person.online) return avatar;
+
+    final surface = Theme.of(context).colorScheme.surface;
+    return SizedBox(
+      width: size,
+      height: size,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          avatar,
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: Container(
+              width: 13,
+              height: 13,
+              decoration: BoxDecoration(
+                color: AppColors.online,
+                shape: BoxShape.circle,
+                border: Border.all(color: surface, width: 2),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -92,6 +158,7 @@ class PersonTile extends StatelessWidget {
     required this.subtitle,
     this.onTap,
     this.trailing,
+    this.showOnline = false,
     super.key,
   });
 
@@ -99,6 +166,7 @@ class PersonTile extends StatelessWidget {
   final String subtitle;
   final VoidCallback? onTap;
   final Widget? trailing;
+  final bool showOnline;
 
   @override
   Widget build(BuildContext context) {
@@ -106,13 +174,13 @@ class PersonTile extends StatelessWidget {
     return Material(
       color: theme.colorScheme.surfaceContainerLowest,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         side: BorderSide(color: theme.colorScheme.outlineVariant),
       ),
       child: ListTile(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        leading: PersonAvatar(person: person),
+        leading: PersonAvatar(person: person, showOnline: showOnline),
         title: Text(
           person.displayName,
           maxLines: 1,

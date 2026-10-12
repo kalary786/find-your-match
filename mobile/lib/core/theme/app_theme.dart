@@ -8,6 +8,8 @@ abstract final class AppTheme {
 
   static ThemeData _build(Brightness brightness) {
     final isDark = brightness == Brightness.dark;
+    final card = AppColors.cardOf(brightness);
+    final line = AppColors.lineOf(brightness);
     final scheme = ColorScheme.fromSeed(
       seedColor: AppColors.coral,
       brightness: brightness,
@@ -16,6 +18,8 @@ abstract final class AppTheme {
       onPrimary: isDark ? AppColors.coralInk : Colors.white,
       surface: isDark ? AppColors.canvasDark : AppColors.canvas,
       onSurface: isDark ? AppColors.onDark : AppColors.ink,
+      surfaceContainerLowest: card,
+      outlineVariant: line,
     );
 
     final base = ThemeData(
@@ -24,12 +28,18 @@ abstract final class AppTheme {
       brightness: brightness,
     );
 
+    final pill = BorderRadius.circular(28);
+    final tileShape = RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(20),
+      side: BorderSide(color: line),
+    );
+
     return base.copyWith(
       scaffoldBackgroundColor: scheme.surface,
       textTheme: base.textTheme.copyWith(
         headlineMedium: base.textTheme.headlineMedium?.copyWith(
           fontWeight: FontWeight.w800,
-          letterSpacing: -0.4,
+          letterSpacing: -0.5,
           height: 1.15,
         ),
         headlineSmall: base.textTheme.headlineSmall?.copyWith(
@@ -53,11 +63,22 @@ abstract final class AppTheme {
         ),
       ),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: scheme.surface,
-        indicatorColor: scheme.primary.withValues(alpha: 0.18),
+        backgroundColor: card,
+        height: 68,
+        indicatorColor: scheme.primary.withValues(alpha: 0.14),
+        indicatorShape: const StadiumBorder(),
         labelTextStyle: WidgetStateProperty.all(
           base.textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
         ),
+      ),
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+          TargetPlatform.windows: FadeForwardsPageTransitionsBuilder(),
+          TargetPlatform.linux: FadeForwardsPageTransitionsBuilder(),
+        },
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
@@ -91,23 +112,49 @@ abstract final class AppTheme {
       dialogTheme: DialogThemeData(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       ),
+      popupMenuTheme: PopupMenuThemeData(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      ),
       cardTheme: CardThemeData(
-        color: scheme.surfaceContainerLowest,
+        color: card,
         elevation: 0,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: scheme.outlineVariant),
-        ),
+        shadowColor: Colors.transparent,
+        shape: tileShape,
+      ),
+      listTileTheme: ListTileThemeData(
+        shape: tileShape,
+        tileColor: card,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: scheme.surfaceContainerLowest,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
+        fillColor: card,
         contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
+          horizontal: 18,
           vertical: 14,
+        ),
+        border: OutlineInputBorder(
+          borderRadius: pill,
+          borderSide: BorderSide(color: line),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: pill,
+          borderSide: BorderSide(color: line),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: pill,
+          borderSide: BorderSide(color: scheme.primary, width: 1.5),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: pill,
+          borderSide: BorderSide(color: line),
+        ),
+        errorBorder: OutlineInputBorder(
+          borderRadius: pill,
+          borderSide: BorderSide(color: scheme.error),
+        ),
+        focusedErrorBorder: OutlineInputBorder(
+          borderRadius: pill,
+          borderSide: BorderSide(color: scheme.error, width: 1.5),
         ),
       ),
       chipTheme: base.chipTheme.copyWith(
