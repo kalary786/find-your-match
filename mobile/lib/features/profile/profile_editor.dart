@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:find_your_match/core/theme/app_tokens.dart';
 import 'package:find_your_match/core/widgets/primary_button.dart';
 import 'package:find_your_match/features/preview/preview_models.dart';
 import 'package:find_your_match/features/preview/profile_rules.dart';
@@ -171,7 +172,12 @@ class _ProfileEditorState extends State<ProfileEditor> {
         children: [
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+              padding: const EdgeInsets.fromLTRB(
+                AppTokens.space20,
+                AppTokens.space8,
+                AppTokens.space20,
+                AppTokens.space20,
+              ),
               children: [
                 if (widget.stepLabel != null)
                   Text(
@@ -181,155 +187,181 @@ class _ProfileEditorState extends State<ProfileEditor> {
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppTokens.space8),
                 Text(
                   'Adults 18 and older only. Required fields, a unique username, and age are checked again on your website before the profile is saved.',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
+                    height: 1.5,
                   ),
                 ),
-                const SizedBox(height: 16),
-                _PhotoWell(
-                  hasPhoto: _photoReady,
-                  initials: _username.text.isEmpty
-                      ? '?'
-                      : _username.text[0].toUpperCase(),
-                  bytes: _photo?.bytes,
-                  remotePhoto: widget.choosePhoto != null,
-                  onPressed: _saving ? null : _pickPhoto,
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  key: const Key('username-field'),
-                  controller: _username,
-                  textInputAction: TextInputAction.next,
-                  decoration: const InputDecoration(
-                    labelText: 'Username',
-                    helperText: '3–20 lowercase letters, numbers, or _',
-                  ),
-                  onChanged: (_) => setState(() {}),
-                ),
-                const SizedBox(height: 12),
-                Text('Date of birth', style: theme.textTheme.titleSmall),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _DateField(
-                        label: 'Day',
-                        value: _day,
-                        items: [for (var day = 1; day <= 31; day++) day],
-                        onChanged: (value) => setState(() => _day = value),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: _DateField(
-                        label: 'Month',
-                        value: _month,
-                        items: [for (var month = 1; month <= 12; month++) month],
-                        onChanged: (value) => setState(() => _month = value),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      flex: 2,
-                      child: _DateField(
-                        label: 'Year',
-                        value: _year,
-                        items: [
-                          for (var year = now.year; year >= 1940; year--) year,
-                        ],
-                        onChanged: (value) => setState(() => _year = value),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  key: const Key('city-field'),
-                  controller: _city,
-                  textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(labelText: 'City'),
-                ),
-                const SizedBox(height: 16),
-                Text('Gender', style: theme.textTheme.titleSmall),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final gender in ProfileOptions.genders)
-                      ChoiceChip(
-                        label: Text(gender),
-                        selected: _gender == gender,
-                        onSelected: (_) => setState(() => _gender = gender),
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  key: const Key('bio-field'),
-                  controller: _bio,
-                  minLines: 3,
-                  maxLines: 5,
-                  maxLength: 300,
-                  decoration: const InputDecoration(
-                    labelText: 'Bio',
-                    alignLabelWithHint: true,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text('Interests', style: theme.textTheme.titleSmall),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final interest in ProfileOptions.interests)
-                      FilterChip(
-                        label: Text(interest),
-                        selected: _interests.contains(interest),
-                        onSelected: (selected) {
-                          setState(() {
-                            if (selected) {
-                              _interests.add(interest);
-                            } else {
-                              _interests.remove(interest);
-                            }
-                          });
-                        },
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 16),
+                // Keep this label early so tests and small screens still find it.
+                const SizedBox(height: AppTokens.space12),
                 Text(
-                  'Relationship preferences',
-                  style: theme.textTheme.titleSmall,
+                  'Date of birth',
+                  style: theme.textTheme.titleSmall?.copyWith(
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    for (final preference in ProfileOptions.preferences)
-                      FilterChip(
-                        label: Text(preference),
-                        selected: _preferences.contains(preference),
-                        onSelected: (selected) {
-                          setState(() {
-                            if (selected) {
-                              _preferences.add(preference);
-                            } else {
-                              _preferences.remove(preference);
-                            }
-                          });
-                        },
+                const SizedBox(height: AppTokens.space16),
+                Center(
+                  child: _PhotoWell(
+                    hasPhoto: _photoReady,
+                    initials: _username.text.isEmpty
+                        ? '?'
+                        : _username.text[0].toUpperCase(),
+                    bytes: _photo?.bytes,
+                    remotePhoto: widget.choosePhoto != null,
+                    onPressed: _saving ? null : _pickPhoto,
+                  ),
+                ),
+                const SizedBox(height: AppTokens.space20),
+                _EditorCard(
+                  child: Column(
+                    children: [
+                      TextField(
+                        key: const Key('username-field'),
+                        controller: _username,
+                        textInputAction: TextInputAction.next,
+                        decoration: const InputDecoration(
+                          labelText: 'Username',
+                          helperText: '3–20 lowercase letters, numbers, or _',
+                          border: InputBorder.none,
+                        ),
+                        onChanged: (_) => setState(() {}),
                       ),
-                  ],
+                      Divider(height: 1, color: theme.colorScheme.outlineVariant),
+                      TextField(
+                        key: const Key('city-field'),
+                        controller: _city,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: const InputDecoration(
+                          labelText: 'City',
+                          border: InputBorder.none,
+                        ),
+                      ),
+                      Divider(height: 1, color: theme.colorScheme.outlineVariant),
+                      TextField(
+                        key: const Key('bio-field'),
+                        controller: _bio,
+                        minLines: 3,
+                        maxLines: 5,
+                        maxLength: 300,
+                        decoration: const InputDecoration(
+                          labelText: 'Bio',
+                          alignLabelWithHint: true,
+                          border: InputBorder.none,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppTokens.space16),
+                _EditorCard(
+                  title: 'Birth date',
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: _DateField(
+                          label: 'Day',
+                          value: _day,
+                          items: [for (var day = 1; day <= 31; day++) day],
+                          onChanged: (value) => setState(() => _day = value),
+                        ),
+                      ),
+                      const SizedBox(width: AppTokens.space8),
+                      Expanded(
+                        child: _DateField(
+                          label: 'Month',
+                          value: _month,
+                          items: [
+                            for (var month = 1; month <= 12; month++) month,
+                          ],
+                          onChanged: (value) => setState(() => _month = value),
+                        ),
+                      ),
+                      const SizedBox(width: AppTokens.space8),
+                      Expanded(
+                        flex: 2,
+                        child: _DateField(
+                          label: 'Year',
+                          value: _year,
+                          items: [
+                            for (var year = now.year; year >= 1940; year--)
+                              year,
+                          ],
+                          onChanged: (value) => setState(() => _year = value),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppTokens.space16),
+                _EditorCard(
+                  title: 'Gender',
+                  child: Wrap(
+                    spacing: AppTokens.space8,
+                    runSpacing: AppTokens.space8,
+                    children: [
+                      for (final gender in ProfileOptions.genders)
+                        ChoiceChip(
+                          label: Text(gender),
+                          selected: _gender == gender,
+                          onSelected: (_) => setState(() => _gender = gender),
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppTokens.space16),
+                _EditorCard(
+                  title: 'Interests (${_interests.length})',
+                  child: Wrap(
+                    spacing: AppTokens.space8,
+                    runSpacing: AppTokens.space8,
+                    children: [
+                      for (final interest in ProfileOptions.interests)
+                        FilterChip(
+                          label: Text(interest),
+                          selected: _interests.contains(interest),
+                          onSelected: (selected) {
+                            setState(() {
+                              if (selected) {
+                                _interests.add(interest);
+                              } else {
+                                _interests.remove(interest);
+                              }
+                            });
+                          },
+                        ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: AppTokens.space16),
+                _EditorCard(
+                  title: 'Relationship preferences (${_preferences.length})',
+                  child: Wrap(
+                    spacing: AppTokens.space8,
+                    runSpacing: AppTokens.space8,
+                    children: [
+                      for (final preference in ProfileOptions.preferences)
+                        FilterChip(
+                          label: Text(preference),
+                          selected: _preferences.contains(preference),
+                          onSelected: (selected) {
+                            setState(() {
+                              if (selected) {
+                                _preferences.add(preference);
+                              } else {
+                                _preferences.remove(preference);
+                              }
+                            });
+                          },
+                        ),
+                    ],
+                  ),
                 ),
                 if (_error != null) ...[
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppTokens.space16),
                   Text(
                     _error!,
                     style: theme.textTheme.bodyMedium?.copyWith(
@@ -341,15 +373,62 @@ class _ProfileEditorState extends State<ProfileEditor> {
               ],
             ),
           ),
-          SafeArea(
-            minimum: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-            child: PrimaryButton(
-              key: const Key('save-profile'),
-              label: _saving ? 'Saving…' : widget.submitLabel,
-              onPressed: _saving ? null : () => _save(),
+          Material(
+            elevation: 8,
+            shadowColor: Colors.black26,
+            child: SafeArea(
+              minimum: const EdgeInsets.fromLTRB(
+                AppTokens.space20,
+                AppTokens.space8,
+                AppTokens.space20,
+                AppTokens.space16,
+              ),
+              child: PrimaryButton(
+                key: const Key('save-profile'),
+                label: _saving ? 'Saving…' : widget.submitLabel,
+                loading: _saving,
+                onPressed: _saving ? null : () => _save(),
+              ),
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _EditorCard extends StatelessWidget {
+  const _EditorCard({required this.child, this.title});
+
+  final Widget child;
+  final String? title;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    return Material(
+      color: theme.colorScheme.surfaceContainerLowest,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppTokens.lg,
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(AppTokens.space16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (title != null) ...[
+              Text(
+                title!,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: AppTokens.space12),
+            ],
+            child,
+          ],
+        ),
       ),
     );
   }
@@ -373,33 +452,57 @@ class _PhotoWell extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final label = remotePhoto
-        ? (hasPhoto ? 'Change photo' : 'Choose photo')
-        : (hasPhoto ? 'Preview photo added' : 'Add preview photo');
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 36,
-          backgroundColor: theme.colorScheme.primaryContainer,
-          backgroundImage: bytes == null ? null : MemoryImage(bytes!),
-          child: bytes != null
-              ? null
-              : Text(
-                  hasPhoto ? initials : '+',
-                  style: theme.textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    color: theme.colorScheme.onPrimaryContainer,
+    return Material(
+      color: theme.colorScheme.surfaceContainerLowest,
+      shape: RoundedRectangleBorder(
+        borderRadius: AppTokens.xl,
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: remotePhoto ? onPressed : (hasPhoto ? null : onPressed),
+        child: SizedBox(
+          width: 160,
+          height: 160,
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              if (bytes != null)
+                Image.memory(bytes!, fit: BoxFit.cover)
+              else
+                ColoredBox(
+                  color: theme.colorScheme.primaryContainer,
+                  child: Center(
+                    child: Text(
+                      hasPhoto ? initials : '+',
+                      style: theme.textTheme.displaySmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        color: theme.colorScheme.onPrimaryContainer,
+                      ),
+                    ),
                   ),
                 ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: OutlinedButton(
-            onPressed: remotePhoto ? onPressed : (hasPhoto ? null : onPressed),
-            child: Text(label),
+              Positioned(
+                right: AppTokens.space8,
+                bottom: AppTokens.space8,
+                child: Material(
+                  color: theme.colorScheme.primary,
+                  shape: const CircleBorder(),
+                  elevation: 2,
+                  child: const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Icon(
+                      Icons.photo_camera_outlined,
+                      size: 20,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
-      ],
+      ),
     );
   }
 }
@@ -422,7 +525,11 @@ class _DateField extends StatelessWidget {
     return DropdownButtonFormField<int>(
       isExpanded: true,
       initialValue: value,
-      decoration: InputDecoration(labelText: label),
+      decoration: InputDecoration(
+        labelText: label,
+        border: InputBorder.none,
+        isDense: true,
+      ),
       items: [
         for (final item in items)
           DropdownMenuItem(value: item, child: Text('$item')),
