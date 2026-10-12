@@ -1,3 +1,4 @@
+import 'package:find_your_match/core/theme/app_tokens.dart';
 import 'package:find_your_match/core/widgets/empty_state.dart';
 import 'package:find_your_match/core/widgets/person_avatar.dart';
 import 'package:find_your_match/features/profile/account_failure.dart';
@@ -20,21 +21,15 @@ class BlockedUsersPage extends ConsumerWidget {
               message: 'People you block show up here until you unblock them.',
             )
           : ListView.separated(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(AppTokens.space16),
               itemCount: people.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 8),
+              separatorBuilder: (context, index) =>
+                  const SizedBox(height: AppTokens.space8),
               itemBuilder: (context, index) {
                 final person = people[index];
-                return ListTile(
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  tileColor: Theme.of(
-                    context,
-                  ).colorScheme.surfaceContainerLowest,
-                  leading: PersonAvatar(person: person),
-                  title: Text(person.displayName),
-                  subtitle: Text(person.username),
+                return PersonTile(
+                  person: person,
+                  subtitle: person.username,
                   trailing: TextButton(
                     onPressed: () async {
                       try {

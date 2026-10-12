@@ -2,15 +2,16 @@ import 'dart:async';
 
 import 'package:find_your_match/core/routing/app_routes.dart';
 import 'package:find_your_match/core/theme/app_colors.dart';
+import 'package:find_your_match/core/widgets/empty_state.dart';
 import 'package:find_your_match/core/widgets/person_avatar.dart';
 import 'package:find_your_match/features/ads/network_ad_controller.dart';
-import 'package:find_your_match/features/ads/network_banner.dart';
 import 'package:find_your_match/features/chat/widgets/chat_composer.dart';
 import 'package:find_your_match/features/chat/widgets/message_bubble.dart';
 import 'package:find_your_match/features/preview/preview_models.dart';
 import 'package:find_your_match/features/profile/account_failure.dart';
 import 'package:find_your_match/features/social/social_store.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -100,6 +101,7 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage>
   Future<void> _send() async {
     final text = _text.text.trim();
     if (text.isEmpty || _sending) return;
+    HapticFeedback.lightImpact();
     setState(() => _sending = true);
     _text.clear();
     try {
@@ -144,24 +146,16 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage>
     if (person == null || blocked || !social.isMatched(widget.userId)) {
       return Scaffold(
         appBar: AppBar(title: const Text('Chat')),
-        body: const Center(
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Text(
+        body: EmptyState(
+          icon: blocked ? Icons.block : Icons.chat_bubble_outline,
+          title: blocked ? 'Chat closed' : 'Not matched yet',
+          message:
               'Chat is available after a match, and closes when someone is blocked.',
-              textAlign: TextAlign.center,
-            ),
-          ),
         ),
       );
     }
     final messages = social.messages[person.id] ?? const <ChatMessage>[];
     _rememberMessages(messages);
-    final bannerAtTop = ref
-        .watch(networkAdControllerProvider)
-        .settings
-        .bannerAtTop;
-    const chatBanner = NetworkBanner(inChat: true);
     final muted = theme.colorScheme.onSurfaceVariant;
     final line = AppColors.lineOf(theme.brightness);
 
@@ -259,7 +253,6 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage>
       ),
       body: Column(
         children: [
-          if (bannerAtTop) chatBanner,
           Expanded(
             child: messages.isEmpty
                 ? Center(
@@ -320,7 +313,6 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage>
                     },
                   ),
           ),
-          if (!bannerAtTop) chatBanner,
           ChatComposer(
             controller: _text,
             sending: _sending,

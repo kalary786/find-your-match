@@ -18,6 +18,7 @@ class PlacementAd extends ConsumerWidget {
         .round()
         .clamp(320, 1080)
         .toInt();
+    final theme = Theme.of(context);
     final image = Image.network(
       ad.imageUrl,
       fit: BoxFit.cover,
@@ -33,18 +34,38 @@ class PlacementAd extends ConsumerWidget {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Material(
-        color: Theme.of(context).colorScheme.surfaceContainerLowest,
+        color: theme.colorScheme.surfaceContainerLowest,
         clipBehavior: Clip.antiAlias,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: SizedBox(
-          height: 72,
-          width: double.infinity,
-          child: link == null
-              ? image
-              : InkWell(
-                  onTap: () => openExternalLink(ad.linkUrl),
-                  child: image,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: theme.colorScheme.outlineVariant),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(10, 6, 10, 0),
+              child: Text(
+                'Ad',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: theme.colorScheme.onSurfaceVariant,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.4,
                 ),
+              ),
+            ),
+            SizedBox(
+              height: 72,
+              width: double.infinity,
+              child: link == null
+                  ? image
+                  : InkWell(
+                      onTap: () => openExternalLink(ad.linkUrl),
+                      child: image,
+                    ),
+            ),
+          ],
         ),
       ),
     );

@@ -94,6 +94,11 @@ void main() {
       contains('LaunchMode.externalApplication'),
     );
     expect(File('pubspec.yaml').readAsStringSync(), contains('google_mobile_ads'));
+    expect(File('pubspec.yaml').readAsStringSync(), contains('gma_mediation_meta'));
+    expect(
+      File('lib/features/ads/smart_banner_ad.dart').readAsStringSync(),
+      contains('PlacementAd'),
+    );
     for (final path in [
       'lib/features/chat/chat_room_page.dart',
       'lib/features/chat/chats_page.dart',
@@ -101,6 +106,8 @@ void main() {
       'lib/features/safety/delete_account_page.dart',
     ]) {
       expect(File(path).readAsStringSync(), isNot(contains('PlacementAd')));
+      expect(File(path).readAsStringSync(), isNot(contains('SmartBannerAd')));
+      expect(File(path).readAsStringSync(), isNot(contains('NetworkBanner')));
     }
     for (final path in [
       'lib/features/safety/report_user_page.dart',
@@ -113,7 +120,7 @@ void main() {
       'lib/features/search/search_page.dart',
       'lib/features/matches/matches_page.dart',
     ]) {
-      expect(File(path).readAsStringSync(), contains('PlacementAd'));
+      expect(File(path).readAsStringSync(), contains('SmartBannerAd'));
     }
   });
 

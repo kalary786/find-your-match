@@ -31,6 +31,7 @@ android {
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.findyourmatch.app"
+        // google_mobile_ads + Meta mediation require API 23+.
         minSdk = maxOf(23, flutter.minSdkVersion)
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
@@ -38,6 +39,9 @@ android {
         // Do not set ndk.abiFilters here: it conflicts with
         // `flutter build apk --split-per-abi`. Restrict ABIs via
         // `--target-platform=android-arm,android-arm64` instead (drops x86_64).
+        // Google test AdMob app id — replace with your real id for production.
+        manifestPlaceholders["admobAppId"] =
+            "ca-app-pub-3940256099942544~3347511713"
     }
 
     signingConfigs {

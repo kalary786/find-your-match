@@ -1,4 +1,5 @@
-import 'package:find_your_match/core/widgets/primary_button.dart';
+import 'package:find_your_match/core/theme/app_tokens.dart';
+import 'package:find_your_match/core/widgets/gradient_button.dart';
 import 'package:flutter/material.dart';
 
 class ErrorState extends StatelessWidget {
@@ -18,16 +19,16 @@ class ErrorState extends StatelessWidget {
     final theme = Theme.of(context);
     return Center(
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(32),
+        padding: const EdgeInsets.all(AppTokens.space32),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
-              Icons.error_outline,
-              size: 48,
+              Icons.cloud_off_outlined,
+              size: 52,
               color: theme.colorScheme.error,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: AppTokens.space16),
             Text(
               title,
               textAlign: TextAlign.center,
@@ -35,7 +36,7 @@ class ErrorState extends StatelessWidget {
                 fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: AppTokens.space8),
             Text(
               message,
               textAlign: TextAlign.center,
@@ -44,8 +45,8 @@ class ErrorState extends StatelessWidget {
               ),
             ),
             if (onRetry != null) ...[
-              const SizedBox(height: 24),
-              PrimaryButton(label: 'Try again', onPressed: onRetry),
+              const SizedBox(height: AppTokens.space24),
+              GradientButton(label: 'Try again', onPressed: onRetry),
             ],
           ],
         ),

@@ -1,3 +1,4 @@
+import 'package:find_your_match/core/theme/app_tokens.dart';
 import 'package:find_your_match/core/widgets/error_state.dart';
 import 'package:find_your_match/features/legal/legal_copy.dart';
 import 'package:flutter/material.dart';
@@ -22,28 +23,42 @@ class LegalPage extends StatelessWidget {
     final publicUrl = document.publicUrl;
     return Scaffold(
       appBar: AppBar(title: Text(document.title)),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
-        children: [
-          for (final section in document.sections) ...[
-            Text(
-              section.heading,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-              ),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 680),
+          child: ListView(
+            padding: const EdgeInsets.fromLTRB(
+              AppTokens.space20,
+              AppTokens.space8,
+              AppTokens.space20,
+              AppTokens.space24,
             ),
-            const SizedBox(height: 8),
-            Text(section.body, style: theme.textTheme.bodyLarge),
-            const SizedBox(height: 20),
-          ],
-          if (publicUrl != null)
-            Text(
-              'The same page is public at $publicUrl',
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            ),
-        ],
+            children: [
+              for (final section in document.sections) ...[
+                Text(
+                  section.heading,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: AppTokens.space12),
+                Text(
+                  section.body,
+                  style: theme.textTheme.bodyLarge?.copyWith(height: 1.6),
+                ),
+                const SizedBox(height: AppTokens.space24),
+              ],
+              if (publicUrl != null)
+                Text(
+                  'The same page is public at $publicUrl',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                    height: 1.6,
+                  ),
+                ),
+            ],
+          ),
+        ),
       ),
     );
   }

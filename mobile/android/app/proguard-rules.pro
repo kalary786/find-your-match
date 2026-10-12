@@ -11,6 +11,19 @@
 -keep class com.google.android.gms.ads.** { *; }
 -dontwarn com.google.android.gms.**
 -keep class com.google.android.gms.common.** { *; }
+-keep class com.google.android.gms.internal.ads.** { *; }
+-keep class com.google.android.gms.ads.mediation.** { *; }
+
+## Meta Audience Network (AdMob mediation adapter)
+-keep class com.facebook.ads.** { *; }
+-dontwarn com.facebook.ads.**
+-keep class com.google.ads.mediation.facebook.** { *; }
+-dontwarn com.google.ads.mediation.facebook.**
+-keepclassmembers class com.facebook.ads.internal.** { *; }
+
+## User Messaging Platform (UMP / consent)
+-keep class com.google.android.ump.** { *; }
+-dontwarn com.google.android.ump.**
 
 ## Keep generic signatures used by reflection-heavy libs
 -keepattributes Signature
