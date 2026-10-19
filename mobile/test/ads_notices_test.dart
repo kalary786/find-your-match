@@ -94,11 +94,7 @@ void main() {
       contains('LaunchMode.externalApplication'),
     );
     expect(File('pubspec.yaml').readAsStringSync(), contains('google_mobile_ads'));
-    expect(File('pubspec.yaml').readAsStringSync(), contains('gma_mediation_meta'));
-    expect(
-      File('lib/features/ads/smart_banner_ad.dart').readAsStringSync(),
-      contains('PlacementAd'),
-    );
+    expect(File('pubspec.yaml').readAsStringSync(), isNot(contains('gma_mediation_meta')));
     for (final path in [
       'lib/features/chat/chat_room_page.dart',
       'lib/features/chat/chats_page.dart',
@@ -110,17 +106,12 @@ void main() {
       expect(File(path).readAsStringSync(), isNot(contains('NetworkBanner')));
     }
     for (final path in [
-      'lib/features/safety/report_user_page.dart',
-      'lib/features/safety/delete_account_page.dart',
-    ]) {
-      expect(File(path).readAsStringSync(), isNot(contains('NetworkBanner')));
-    }
-    for (final path in [
       'lib/features/discover/discover_page.dart',
       'lib/features/search/search_page.dart',
       'lib/features/matches/matches_page.dart',
     ]) {
-      expect(File(path).readAsStringSync(), contains('SmartBannerAd'));
+      expect(File(path).readAsStringSync(), contains('PlacementAd'));
+      expect(File(path).readAsStringSync(), isNot(contains('SmartBannerAd')));
     }
   });
 
@@ -156,13 +147,21 @@ void main() {
     final networkAds = File('$root/admin/network_ads.php').readAsStringSync();
     expect(networkAds, contains('banner_enabled'));
     expect(networkAds, contains('interstitial_enabled'));
-    expect(networkAds, contains('monetag_link'));
+    expect(networkAds, contains('lofts_link'));
+    expect(networkAds, contains('facebook_banner'));
+    expect(networkAds, isNot(contains('meditation_link')));
+    expect(networkAds, isNot(contains('monetag_link')));
+    expect(networkAds, isNot(contains('appnext_banner')));
+    expect(networkAds, isNot(contains('startio_app_id')));
+    expect(networkAds, isNot(contains('unity_game_id')));
+    expect(networkAds, isNot(contains('wortise_app_id')));
     expect(networkAds, contains('Show every 4 pages'));
     expect(networkAds, contains('Show every 20 messages sent'));
     expect(networkAds, contains('Save network ads'));
     final bootstrap = File('$root/lib/bootstrap.php').readAsStringSync();
     expect(bootstrap, contains('function network_ad_from_post'));
-    expect(bootstrap, contains('optional_link((string) (\$post[\'monetag_link\']'));
+    expect(bootstrap, contains('optional_link((string) (\$post[\'lofts_link\']'));
+    expect(bootstrap, isNot(contains('meditation_link')));
     expect(bootstrap, contains('admob_in_chats'));
     final api = File('$root/api/index.php').readAsStringSync();
     expect(api, contains("'networkAds' => list_network_ads()"));

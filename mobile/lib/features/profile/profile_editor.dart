@@ -40,7 +40,7 @@ class ProfileEditor extends StatefulWidget {
 
 class _ProfileEditorState extends State<ProfileEditor> {
   late final TextEditingController _username;
-  late final TextEditingController _city;
+  late final TextEditingController _country;
   late final TextEditingController _bio;
   int? _day;
   int? _month;
@@ -50,6 +50,7 @@ class _ProfileEditorState extends State<ProfileEditor> {
   ProfilePhoto? _photo;
   final _interests = <String>{};
   final _preferences = <String>{};
+  ProfileFieldErrors _fieldErrors = const ProfileFieldErrors();
   String? _error;
   var _saving = false;
 
@@ -58,7 +59,7 @@ class _ProfileEditorState extends State<ProfileEditor> {
     super.initState();
     final initial = widget.initial;
     _username = TextEditingController(text: initial?.username ?? '');
-    _city = TextEditingController(text: initial?.city ?? '');
+    _country = TextEditingController(text: initial?.city ?? '');
     _bio = TextEditingController(text: initial?.bio ?? '');
     _gender = initial?.gender;
     _hasPhoto = initial?.hasPhoto ?? false;
@@ -75,7 +76,7 @@ class _ProfileEditorState extends State<ProfileEditor> {
   @override
   void dispose() {
     _username.dispose();
-    _city.dispose();
+    _country.dispose();
     _bio.dispose();
     super.dispose();
   }
@@ -110,34 +111,33 @@ class _ProfileEditorState extends State<ProfileEditor> {
   Future<void> _save() async {
     if (_saving) return;
     final birth = exactDate(_year, _month, _day);
-    final error = validateProfile(
+    final fieldErrors = validateProfileFields(
       username: _username.text,
       birthDate: birth,
-      gender: _gender,
-      city: _city.text,
-      bio: _bio.text,
-      hasPhoto: _photoReady,
-      interests: _interests,
-      preferences: _preferences,
+      country: _country.text,
       takenUsernames: widget.takenUsernames,
     );
-    if (error != null || birth == null) {
-      setState(() => _error = error ?? 'Enter a real date of birth.');
+    if (fieldErrors.hasAny) {
+      setState(() {
+        _fieldErrors = fieldErrors;
+        _error = null;
+      });
       return;
     }
     final draft = ProfileDraft(
       username: _username.text.trim().toLowerCase(),
-      birthDate: birth,
-      gender: _gender!,
-      city: _city.text.trim(),
+      birthDate: birth!,
+      gender: _gender ?? '',
+      city: _country.text.trim(),
       bio: _bio.text.trim(),
       interests: _interests.toList(),
       preferences: _preferences.toList(),
-      hasPhoto: true,
+      hasPhoto: _photoReady,
       photo: _photo,
     );
     setState(() {
       _saving = true;
+      _fieldErrors = const ProfileFieldErrors();
       _error = null;
     });
     try {
@@ -189,16 +189,15 @@ class _ProfileEditorState extends State<ProfileEditor> {
                   ),
                 const SizedBox(height: AppTokens.space8),
                 Text(
-                  'Adults 18 and older only. Required fields, a unique username, and age are checked again on your website before the profile is saved.',
+                  'Adults 18 and older only. Username, country, and date of birth are required. Photo, bio, gender, interests, and preferences are optional.',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                     height: 1.5,
                   ),
                 ),
-                // Keep this label early so tests and small screens still find it.
                 const SizedBox(height: AppTokens.space12),
                 Text(
-                  'Date of birth',
+                  'Date of birth *',
                   style: theme.textTheme.titleSmall?.copyWith(
                     fontWeight: FontWeight.w700,
                   ),
@@ -215,6 +214,14 @@ class _ProfileEditorState extends State<ProfileEditor> {
                     onPressed: _saving ? null : _pickPhoto,
                   ),
                 ),
+                const SizedBox(height: AppTokens.space8),
+                Text(
+                  'Photo (optional)',
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
                 const SizedBox(height: AppTokens.space20),
                 _EditorCard(
                   child: Column(
@@ -223,22 +230,37 @@ class _ProfileEditorState extends State<ProfileEditor> {
                         key: const Key('username-field'),
                         controller: _username,
                         textInputAction: TextInputAction.next,
-                        decoration: const InputDecoration(
-                          labelText: 'Username',
+                        decoration: InputDecoration(
+                          labelText: 'Username *',
                           helperText: '3–20 lowercase letters, numbers, or _',
+                          errorText: _fieldErrors.username,
                           border: InputBorder.none,
                         ),
-                        onChanged: (_) => setState(() {}),
+                        onChanged: (_) => setState(() {
+                          _fieldErrors = ProfileFieldErrors(
+                            username: null,
+                            birthDate: _fieldErrors.birthDate,
+                            country: _fieldErrors.country,
+                          );
+                        }),
                       ),
                       Divider(height: 1, color: theme.colorScheme.outlineVariant),
                       TextField(
                         key: const Key('city-field'),
-                        controller: _city,
+                        controller: _country,
                         textCapitalization: TextCapitalization.words,
-                        decoration: const InputDecoration(
-                          labelText: 'City',
+                        decoration: InputDecoration(
+                          labelText: 'Country *',
+                          errorText: _fieldErrors.country,
                           border: InputBorder.none,
                         ),
+                        onChanged: (_) => setState(() {
+                          _fieldErrors = ProfileFieldErrors(
+                            username: _fieldErrors.username,
+                            birthDate: _fieldErrors.birthDate,
+                            country: null,
+                          );
+                        }),
                       ),
                       Divider(height: 1, color: theme.colorScheme.outlineVariant),
                       TextField(
@@ -248,7 +270,7 @@ class _ProfileEditorState extends State<ProfileEditor> {
                         maxLines: 5,
                         maxLength: 300,
                         decoration: const InputDecoration(
-                          labelText: 'Bio',
+                          labelText: 'Bio (optional)',
                           alignLabelWithHint: true,
                           border: InputBorder.none,
                         ),
@@ -258,47 +280,83 @@ class _ProfileEditorState extends State<ProfileEditor> {
                 ),
                 const SizedBox(height: AppTokens.space16),
                 _EditorCard(
-                  title: 'Birth date',
-                  child: Row(
+                  title: 'Birth date *',
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      Expanded(
-                        child: _DateField(
-                          label: 'Day',
-                          value: _day,
-                          items: [for (var day = 1; day <= 31; day++) day],
-                          onChanged: (value) => setState(() => _day = value),
-                        ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _DateField(
+                              label: 'Day',
+                              value: _day,
+                              items: [for (var day = 1; day <= 31; day++) day],
+                              onChanged: (value) => setState(() {
+                                _day = value;
+                                _fieldErrors = ProfileFieldErrors(
+                                  username: _fieldErrors.username,
+                                  birthDate: null,
+                                  country: _fieldErrors.country,
+                                );
+                              }),
+                            ),
+                          ),
+                          const SizedBox(width: AppTokens.space8),
+                          Expanded(
+                            child: _DateField(
+                              label: 'Month',
+                              value: _month,
+                              items: [
+                                for (var month = 1; month <= 12; month++) month,
+                              ],
+                              onChanged: (value) => setState(() {
+                                _month = value;
+                                _fieldErrors = ProfileFieldErrors(
+                                  username: _fieldErrors.username,
+                                  birthDate: null,
+                                  country: _fieldErrors.country,
+                                );
+                              }),
+                            ),
+                          ),
+                          const SizedBox(width: AppTokens.space8),
+                          Expanded(
+                            flex: 2,
+                            child: _DateField(
+                              label: 'Year',
+                              value: _year,
+                              items: [
+                                for (var year = now.year; year >= 1940; year--)
+                                  year,
+                              ],
+                              onChanged: (value) => setState(() {
+                                _year = value;
+                                _fieldErrors = ProfileFieldErrors(
+                                  username: _fieldErrors.username,
+                                  birthDate: null,
+                                  country: _fieldErrors.country,
+                                );
+                              }),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: AppTokens.space8),
-                      Expanded(
-                        child: _DateField(
-                          label: 'Month',
-                          value: _month,
-                          items: [
-                            for (var month = 1; month <= 12; month++) month,
-                          ],
-                          onChanged: (value) => setState(() => _month = value),
+                      if (_fieldErrors.birthDate != null) ...[
+                        const SizedBox(height: AppTokens.space8),
+                        Text(
+                          _fieldErrors.birthDate!,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.error,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: AppTokens.space8),
-                      Expanded(
-                        flex: 2,
-                        child: _DateField(
-                          label: 'Year',
-                          value: _year,
-                          items: [
-                            for (var year = now.year; year >= 1940; year--)
-                              year,
-                          ],
-                          onChanged: (value) => setState(() => _year = value),
-                        ),
-                      ),
+                      ],
                     ],
                   ),
                 ),
                 const SizedBox(height: AppTokens.space16),
                 _EditorCard(
-                  title: 'Gender',
+                  title: 'Gender (optional)',
                   child: Wrap(
                     spacing: AppTokens.space8,
                     runSpacing: AppTokens.space8,
@@ -307,14 +365,16 @@ class _ProfileEditorState extends State<ProfileEditor> {
                         ChoiceChip(
                           label: Text(gender),
                           selected: _gender == gender,
-                          onSelected: (_) => setState(() => _gender = gender),
+                          onSelected: (_) => setState(() {
+                            _gender = _gender == gender ? null : gender;
+                          }),
                         ),
                     ],
                   ),
                 ),
                 const SizedBox(height: AppTokens.space16),
                 _EditorCard(
-                  title: 'Interests (${_interests.length})',
+                  title: 'Interests (optional · ${_interests.length})',
                   child: Wrap(
                     spacing: AppTokens.space8,
                     runSpacing: AppTokens.space8,
@@ -338,7 +398,8 @@ class _ProfileEditorState extends State<ProfileEditor> {
                 ),
                 const SizedBox(height: AppTokens.space16),
                 _EditorCard(
-                  title: 'Relationship preferences (${_preferences.length})',
+                  title:
+                      'Relationship preferences (optional · ${_preferences.length})',
                   child: Wrap(
                     spacing: AppTokens.space8,
                     runSpacing: AppTokens.space8,

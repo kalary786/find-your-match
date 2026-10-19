@@ -31,43 +31,19 @@ Outputs land in `build/app/outputs/flutter-apk/` and `build/app/outputs/bundle/r
 
 ## Ads setup
 
-AdMob is the mediation host; Meta Audience Network is added as a **bidding** source in the AdMob console. The app only requests AdMob unit IDs — mediation picks AdMob or Meta per impression (no client-side 50/50 rotation). If both fail, `SmartBannerAd` falls back to the self-hosted `PlacementAd`.
+Network banners, interstitials, app-open, and the Lofts link are configured in the admin **Network ads** page. The app requests **AdMob** units from those settings. Discover / Search / Matches also show self-hosted image ads via `PlacementAd` when uploaded in admin **Ads**.
 
-### 1) Put your real AdMob IDs in the app
+### 1) AdMob App ID in the Android build
 
-Edit `lib/features/ads/ad_config.dart`:
+Set `android/app/build.gradle.kts` → `manifestPlaceholders["admobAppId"]` to your real AdMob App ID, then rebuild.
 
-- Replace `YOUR_BANNER_ID`, `YOUR_INTERSTITIAL_ID`, `YOUR_NATIVE_ID` (and the prod app id).
-- Debug / profile builds use Google **test** units automatically (`kUseTestAds = !kReleaseMode`).
-- Android app id placeholder: `android/app/build.gradle.kts` → `manifestPlaceholders["admobAppId"]` (test id is already set).
+### 2) Ad unit IDs
 
-Optional debug helpers:
-
-- Add your device to `AdConfig.testDeviceIds` (hash from logcat).
-- For Meta test ads, add the Meta hashed device id in Audience Network Testing (hash is logged by the Meta SDK).
-
-### 2) AdMob console — mediation group
-
-1. Create an AdMob app (Android) and Banner + Interstitial ad units.
-2. **Mediation** → create a mediation group for **Banner** (Android) and another for **Interstitial**.
-3. Add **Meta Audience Network** as a **bidding** source.
-4. Enter the Meta Placement IDs that match each format.
-5. Keep AdMob in the same group so bidding can choose the higher-paying network.
-
-### 3) Meta Business / Audience Network
-
-1. In Meta Business Suite / Audience Network, create the app (same package: `com.findyourmatch.app`).
-2. Create Banner and Interstitial placements.
-3. Copy those Placement IDs into the AdMob mediation group (step 2).
-4. Ensure the property is approved for Audience Network.
-
-### 4) Check AdMob vs Meta share
-
-In AdMob: **Mediation** reports (or Reporting → filter by mediation network). Compare impressions / estimated earnings for AdMob vs Meta on the same ad units over a few days.
+Paste Banner / Interstitial / App open unit IDs on the admin Network ads page (same AdMob app as the App ID above).
 
 ### Packages
 
-Only `google_mobile_ads` and `gma_mediation_meta` (official Meta adapter). No `facebook_audience_network`.
+Only `google_mobile_ads` (no Meta mediation adapter — keeps the install size smaller).
 
 ## Checks
 

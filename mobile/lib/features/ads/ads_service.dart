@@ -1,14 +1,8 @@
 import 'dart:async';
 
-import 'package:find_your_match/features/ads/ad_config.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:gma_mediation_meta/gma_mediation_meta.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
-
-/// Ensures the Meta Audience Network mediation adapter plugin is linked.
-// ignore: unused_element
-final _ensureMetaMediation = GmaMediationMeta();
 
 /// Initializes UMP consent + Mobile Ads once. Safe to call multiple times.
 class AdsService {
@@ -17,7 +11,7 @@ class AdsService {
   Completer<void>? _ready;
   var _started = false;
 
-  /// Completes after consent gathering and [MobileAds.instance.initialize].
+  /// Completer after consent gathering and [MobileAds.instance.initialize].
   Future<void> get ready => _ready?.future ?? Future.value();
 
   Future<void> start() {
@@ -36,18 +30,9 @@ class AdsService {
     _started = true;
     try {
       await _gatherConsent();
-      if (kDebugMode && AdConfig.testDeviceIds.isNotEmpty) {
-        await MobileAds.instance.updateRequestConfiguration(
-          RequestConfiguration(testDeviceIds: AdConfig.testDeviceIds),
-        );
-      }
-      // Meta Audience Network test device hash (optional, debug only):
-      // In Meta Audience Network settings / Audience Network Testing, add your
-      // device's hashed ID so Meta serves test ads during mediation development.
-      // The hash is printed by the Meta SDK in logcat on first request.
       await MobileAds.instance.initialize();
       if (kDebugMode) {
-        debugPrint('[ads] MobileAds initialized (Meta mediation adapter linked)');
+        debugPrint('[ads] MobileAds initialized');
       }
     } catch (error, stack) {
       if (kDebugMode) {
@@ -102,20 +87,6 @@ class AdsService {
         debugPrint('[ads] privacy options: ${formError.message}');
       }
     });
-  }
-
-  static void logLoad({
-    required String format,
-    required bool success,
-    String? network,
-    String? error,
-  }) {
-    if (!kDebugMode) return;
-    if (success) {
-      debugPrint('[ads] $format loaded via ${network ?? 'unknown'}');
-    } else {
-      debugPrint('[ads] $format failed: ${error ?? 'unknown'}');
-    }
   }
 }
 

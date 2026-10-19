@@ -21,6 +21,68 @@ int ageInYears(DateTime birth, DateTime today) {
   return age;
 }
 
+/// Only [username], [birthDate] (18+), and [country] are required.
+/// Gender, bio, photo, interests, and preferences may be empty.
+class ProfileFieldErrors {
+  const ProfileFieldErrors({
+    this.username,
+    this.birthDate,
+    this.country,
+  });
+
+  final String? username;
+  final String? birthDate;
+  final String? country;
+
+  bool get hasAny =>
+      username != null || birthDate != null || country != null;
+
+  String? get firstMessage => username ?? birthDate ?? country;
+}
+
+ProfileFieldErrors validateProfileFields({
+  required String username,
+  required DateTime? birthDate,
+  required String country,
+  required Set<String> takenUsernames,
+  DateTime? today,
+}) {
+  String? usernameError;
+  String? birthError;
+  String? countryError;
+
+  final name = username.trim().toLowerCase();
+  if (name.isEmpty) {
+    usernameError = 'Enter a username.';
+  } else if (!RegExp(r'^[a-z0-9_]{3,20}$').hasMatch(name)) {
+    usernameError =
+        'Username must be 3–20 characters: lowercase letters, numbers, or underscore.';
+  } else if (takenUsernames.contains(name)) {
+    usernameError = 'That username is already used.';
+  }
+
+  final now = today ?? DateTime.now();
+  if (birthDate == null) {
+    birthError = 'Enter your date of birth.';
+  } else if (!isAtLeast18(birthDate, now)) {
+    birthError = 'You must be 18 or older. No profile was saved.';
+  }
+
+  final place = country.trim();
+  if (place.isEmpty) {
+    countryError = 'Enter your country.';
+  } else if (!RegExp(r"^[A-Za-z][A-Za-z .'-]{1,39}$").hasMatch(place)) {
+    countryError = 'Enter a country using letters, up to 40 characters.';
+  }
+
+  return ProfileFieldErrors(
+    username: usernameError,
+    birthDate: birthError,
+    country: countryError,
+  );
+}
+
+/// Returns the first required-field error, or null when the profile can be saved.
 String? validateProfile({
   required String username,
   required DateTime? birthDate,
@@ -33,36 +95,11 @@ String? validateProfile({
   required Set<String> takenUsernames,
   DateTime? today,
 }) {
-  final name = username.trim().toLowerCase();
-  if (!RegExp(r'^[a-z0-9_]{3,20}$').hasMatch(name)) {
-    return 'Username must be 3–20 characters: lowercase letters, numbers, or underscore.';
-  }
-  if (takenUsernames.contains(name)) {
-    return 'That username is already used.';
-  }
-  if (birthDate == null) return 'Enter your date of birth.';
-  final now = today ?? DateTime.now();
-  if (!isAtLeast18(birthDate, now)) {
-    return 'You must be 18 or older. No profile was saved.';
-  }
-  if (gender == null || !const {
-    'Woman',
-    'Man',
-    'Non-binary',
-    'Prefer not to say',
-  }.contains(gender)) {
-    return 'Choose a gender.';
-  }
-  final cityName = city.trim();
-  if (!RegExp(r"^[A-Za-z][A-Za-z .'-]{1,39}$").hasMatch(cityName)) {
-    return 'Enter a city using letters, up to 40 characters.';
-  }
-  if (!hasPhoto) return 'Add a preview photo to continue.';
-  final about = bio.trim();
-  if (about.length < 8 || about.length > 300) {
-    return 'Bio must be between 8 and 300 characters.';
-  }
-  if (interests.isEmpty) return 'Choose at least one interest.';
-  if (preferences.isEmpty) return 'Choose at least one relationship preference.';
-  return null;
+  return validateProfileFields(
+    username: username,
+    birthDate: birthDate,
+    country: city,
+    takenUsernames: takenUsernames,
+    today: today,
+  ).firstMessage;
 }

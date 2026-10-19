@@ -13,12 +13,12 @@ void main() {
     final error = validateProfile(
       username: 'alex',
       birthDate: DateTime(2010, 1, 1),
-      gender: 'Woman',
-      city: 'Kochi',
-      bio: 'A short bio for the form.',
-      hasPhoto: true,
-      interests: {'Coffee'},
-      preferences: {'Dating'},
+      gender: null,
+      city: 'Pakistan',
+      bio: '',
+      hasPhoto: false,
+      interests: {},
+      preferences: {},
       takenUsernames: const {},
       today: today,
     );
@@ -29,33 +29,47 @@ void main() {
     final error = validateProfile(
       username: 'sample_mina',
       birthDate: DateTime(1998, 4, 2),
-      gender: 'Man',
-      city: 'Pune',
-      bio: 'A short bio for the form.',
-      hasPhoto: true,
-      interests: {'Music'},
-      preferences: {'Friendship'},
+      gender: null,
+      city: 'Pakistan',
+      bio: '',
+      hasPhoto: false,
+      interests: {},
+      preferences: {},
       takenUsernames: const {'sample_mina'},
       today: today,
     );
     expect(error, contains('already used'));
   });
 
-  test('a valid adult profile passes', () {
+  test('only username, country, and age are required', () {
     expect(
       validateProfile(
         username: 'alex_1',
         birthDate: DateTime(1998, 4, 2),
-        gender: 'Man',
-        city: 'Pune',
-        bio: 'A short bio for the form.',
-        hasPhoto: true,
-        interests: {'Music'},
-        preferences: {'Friendship'},
+        gender: null,
+        city: 'Pakistan',
+        bio: '',
+        hasPhoto: false,
+        interests: {},
+        preferences: {},
         takenUsernames: const {'sample_mina'},
         today: today,
       ),
       isNull,
     );
+  });
+
+  test('empty required fields show errors on those fields', () {
+    final errors = validateProfileFields(
+      username: '',
+      birthDate: null,
+      country: '',
+      takenUsernames: const {},
+      today: today,
+    );
+    expect(errors.username, contains('username'));
+    expect(errors.birthDate, contains('date of birth'));
+    expect(errors.country, contains('country'));
+    expect(errors.hasAny, isTrue);
   });
 }

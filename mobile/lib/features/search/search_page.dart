@@ -5,7 +5,7 @@ import 'package:find_your_match/core/widgets/centered_panel.dart';
 import 'package:find_your_match/core/widgets/empty_state.dart';
 import 'package:find_your_match/core/widgets/person_avatar.dart';
 import 'package:find_your_match/core/widgets/verified_badge.dart';
-import 'package:find_your_match/features/ads/smart_banner_ad.dart';
+import 'package:find_your_match/features/ads/placement_ad.dart';
 import 'package:find_your_match/features/preview/preview_models.dart';
 import 'package:find_your_match/features/profile/account_failure.dart';
 import 'package:find_your_match/features/social/social_store.dart';
@@ -63,7 +63,7 @@ class _SearchPageState extends ConsumerState<SearchPage> {
                 ),
                 child: Text('Search', style: theme.textTheme.headlineMedium),
               ),
-              const SmartBannerAd(placement: 'search'),
+              const PlacementAd(placement: 'search'),
               Padding(
                 padding: const EdgeInsets.fromLTRB(
                   AppTokens.space16,

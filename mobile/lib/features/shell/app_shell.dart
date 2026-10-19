@@ -1,7 +1,4 @@
-import 'dart:async';
-
 import 'package:find_your_match/core/theme/app_colors.dart';
-import 'package:find_your_match/features/ads/interstitial_manager.dart';
 import 'package:find_your_match/features/ads/network_ad_controller.dart';
 import 'package:find_your_match/features/ads/network_banner.dart';
 import 'package:find_your_match/features/notices/notices_page.dart';
@@ -15,20 +12,11 @@ class AppShell extends ConsumerWidget {
 
   final StatefulNavigationShell navigationShell;
 
-  void _select(WidgetRef ref, int index) {
-    final previous = navigationShell.currentIndex;
+  void _select(int index) {
     navigationShell.goBranch(
       index,
       initialLocation: index == navigationShell.currentIndex,
     );
-    // Leaving Search with results is a natural interstitial break.
-    if (previous == 1 && index != 1) {
-      final hasResults =
-          ref.read(socialControllerProvider).searchResults.isNotEmpty;
-      if (hasResults) {
-        unawaited(ref.read(interstitialManagerProvider).maybeShow());
-      }
-    }
   }
 
   @override
@@ -50,7 +38,7 @@ class AppShell extends ConsumerWidget {
           children: [
             NavigationRail(
               selectedIndex: navigationShell.currentIndex,
-              onDestinationSelected: (index) => _select(ref, index),
+              onDestinationSelected: _select,
               labelType: NavigationRailLabelType.all,
               destinations: [
                 const NavigationRailDestination(
@@ -103,7 +91,7 @@ class AppShell extends ConsumerWidget {
       body: _withBanner(banner, bannerAtTop, navigationShell),
       bottomNavigationBar: NavigationBar(
         selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: (index) => _select(ref, index),
+        onDestinationSelected: _select,
         destinations: [
           const NavigationDestination(
             icon: Icon(Icons.explore_outlined),

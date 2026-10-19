@@ -11,8 +11,7 @@ import 'package:find_your_match/core/widgets/interest_wrap.dart';
 import 'package:find_your_match/core/widgets/loading_state.dart';
 import 'package:find_your_match/core/widgets/person_avatar.dart';
 import 'package:find_your_match/core/widgets/verified_badge.dart';
-import 'package:find_your_match/features/ads/interstitial_manager.dart';
-import 'package:find_your_match/features/ads/smart_banner_ad.dart';
+import 'package:find_your_match/features/ads/placement_ad.dart';
 import 'package:find_your_match/features/notices/notices_page.dart';
 import 'package:find_your_match/features/preview/preview_models.dart';
 import 'package:find_your_match/features/profile/account_failure.dart';
@@ -81,7 +80,7 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
                   ],
                 ),
               ),
-              const SmartBannerAd(placement: 'discover'),
+              const PlacementAd(placement: 'discover'),
               const UnreadNoticeBanner(),
               if (hidden)
                 Padding(
@@ -348,9 +347,6 @@ class _DiscoverPageState extends ConsumerState<DiscoverPage> {
 
   Future<void> _onProfileViewed() async {
     _profilesSeen += 1;
-    if (_profilesSeen % 5 == 0) {
-      await ref.read(interstitialManagerProvider).maybeShow();
-    }
   }
 
   void _show(String message) {

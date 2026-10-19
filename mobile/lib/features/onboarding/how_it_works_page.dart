@@ -24,7 +24,7 @@ class HowItWorksPage extends StatelessWidget {
             icon: Icons.badge_outlined,
             title: 'Create a profile',
             body:
-                'Add a username, photo, city, and what you are looking for. You must be 18 or older.',
+                'Add a username, country, and date of birth. You must be 18 or older. Photo and other details are optional.',
           ),
           _Step(
             number: '2',

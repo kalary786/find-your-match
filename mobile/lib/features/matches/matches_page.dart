@@ -4,7 +4,7 @@ import 'package:find_your_match/core/widgets/empty_state.dart';
 import 'package:find_your_match/core/widgets/person_avatar.dart';
 import 'package:find_your_match/core/widgets/section_header.dart';
 import 'package:find_your_match/core/widgets/verified_badge.dart';
-import 'package:find_your_match/features/ads/smart_banner_ad.dart';
+import 'package:find_your_match/features/ads/placement_ad.dart';
 import 'package:find_your_match/features/preview/preview_models.dart';
 import 'package:find_your_match/features/social/social_store.dart';
 import 'package:flutter/material.dart';
@@ -33,7 +33,7 @@ class MatchesPage extends ConsumerWidget {
               ),
               child: Text('Matches', style: theme.textTheme.headlineMedium),
             ),
-            const SmartBannerAd(placement: 'matches'),
+            const PlacementAd(placement: 'matches'),
             Expanded(
               child: matches.isEmpty
                   ? const EmptyState(

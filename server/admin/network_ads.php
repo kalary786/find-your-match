@@ -47,9 +47,8 @@ function network_input(array $row, string $label, string $name, int $max = 120):
 }
 
 $body = '<h1>Network ads</h1>'
-    . '<p>Turn a section on, then paste the IDs you have. If more than one network that this app can show is filled in, the app picks one at random.</p>'
-    . '<p>This Android build shows AdMob and a Monetag direct link. Appnext, Facebook, Start.io, Unity Ads, IronSource, and Wortise IDs are saved with the same switches. This build does not request ads from those networks yet.</p>'
-    . '<p>AdMob does not allow its ads inside chats, so leave “Show AdMob in chats” on No. A chat interstitial uses Monetag when that link is set. Reports and account deletion never show these ads.</p>'
+    . '<p>Turn a section on, then paste the IDs or link you have. This build requests AdMob units. Facebook placement IDs are optional notes for your AdMob console setup. Lofts uses its own direct link and opens in the in-app browser when full-screen ads rotate.</p>'
+    . '<p>AdMob does not allow its ads inside chats, so leave “Show AdMob in chats” on No. A chat interstitial can use the Lofts link when it is set. Reports and account deletion never show these ads.</p>'
     . '<p>The installed app uses Google’s test AdMob application ID until a new build contains yours. Test banner <code>ca-app-pub-3940256099942544/6300978111</code>, interstitial <code>ca-app-pub-3940256099942544/1033173712</code>, app open <code>ca-app-pub-3940256099942544/9257395921</code>.</p>'
     . status_html($notice, $error)
     . '<form method="post" class="ads-settings">' . csrf_field();
@@ -58,15 +57,8 @@ $body .= '<h2><label class="check"><input type="checkbox" name="banner_enabled" 
     . network_checked($row, 'banner_enabled') . '> Banner ads</label></h2>';
 $body .= network_input($row, 'AdMob App ID', 'admob_app_id', 80);
 $body .= network_input($row, 'AdMob ad unit ID', 'admob_banner_unit', 80);
-$body .= network_input($row, 'Appnext placement ID', 'appnext_banner');
 $body .= network_input($row, 'Facebook placement ID', 'facebook_banner');
-$body .= network_input($row, 'Start.io App ID', 'startio_app_id');
-$body .= network_input($row, 'Unity Ads Game ID', 'unity_game_id', 80);
-$body .= network_input($row, 'Unity Ads placement ID', 'unity_banner_placement', 80);
-$body .= network_input($row, 'IronSource App ID', 'ironsource_app_key', 80);
-$body .= network_input($row, 'Wortise App ID', 'wortise_app_id', 80);
-$body .= network_input($row, 'Wortise ad unit ID', 'wortise_banner_unit', 80);
-$body .= '<p class="hint">If you set more than one network that this app can show, banner ads appear randomly.</p>';
+$body .= '<p class="hint">Banner ads use the AdMob unit. Put the Meta placement ID here for your mediation notes.</p>';
 $body .= '<label>Ads position<select name="banner_position">'
     . '<option value="bottom"' . network_selected($row, 'banner_position', 'bottom') . '>Bottom</option>'
     . '<option value="top"' . network_selected($row, 'banner_position', 'top') . '>Top</option>'
@@ -83,14 +75,10 @@ $body .= '<label>Show AdMob in chats<select name="admob_in_chats">'
 $body .= '<h2><label class="check"><input type="checkbox" name="interstitial_enabled" value="1"'
     . network_checked($row, 'interstitial_enabled') . '> Interstitial ads</label></h2>';
 $body .= network_input($row, 'AdMob ad unit ID', 'admob_interstitial_unit', 80);
-$body .= network_input($row, 'Appnext placement ID', 'appnext_interstitial');
 $body .= network_input($row, 'Facebook placement ID', 'facebook_interstitial');
-$body .= '<p class="hint">Start.io, Unity Ads, and IronSource use the App ID or Game ID from the banner section.</p>';
-$body .= network_input($row, 'Unity Ads placement ID', 'unity_interstitial_placement', 80);
-$body .= network_input($row, 'Wortise ad unit ID', 'wortise_interstitial_unit', 80);
-$body .= '<label>Monetag DirectLink<input name="monetag_link" maxlength="500" value="'
-    . network_value($row, 'monetag_link') . '" placeholder="https://"></label>';
-$body .= '<p class="hint">If you set more than one network that this app can show, full-screen ads appear randomly.</p>';
+$body .= '<label>Lofts DirectLink<input name="lofts_link" maxlength="500" value="'
+    . network_value($row, 'lofts_link') . '" placeholder="https://"></label>';
+$body .= '<p class="hint">If AdMob and Lofts are both set, full-screen ads appear randomly between them.</p>';
 $body .= '<label>In-app interstitial frequency<select name="page_interval">'
     . '<option value="0"' . network_selected($row, 'page_interval', '0') . '>Off</option>'
     . '<option value="2"' . network_selected($row, 'page_interval', '2') . '>Show every 2 pages</option>'
@@ -117,10 +105,6 @@ $body .= '<label>Show on app launch<select name="launch_interval">'
 $body .= '<label>Show on first launch<select name="show_first_launch">'
     . '<option value="1"' . network_selected($row, 'show_first_launch', '1') . '>Yes</option>'
     . '<option value="0"' . network_selected($row, 'show_first_launch', '0') . '>No</option>'
-    . '</select></label>';
-$body .= '<label>Appnext ad type<select name="appnext_type">'
-    . '<option value="interstitial"' . network_selected($row, 'appnext_type', 'interstitial') . '>Interstitial</option>'
-    . '<option value="native"' . network_selected($row, 'appnext_type', 'native') . '>Native</option>'
     . '</select></label>';
 $body .= network_input($row, 'AdMob app open ad ID', 'admob_app_open_unit', 80);
 $body .= '<p class="hint">If you set an AdMob app open ID, the launch ad is an app-open ad instead of an interstitial.</p>';

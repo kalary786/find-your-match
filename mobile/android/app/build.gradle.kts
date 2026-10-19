@@ -39,9 +39,9 @@ android {
         // Do not set ndk.abiFilters here: it conflicts with
         // `flutter build apk --split-per-abi`. Restrict ABIs via
         // `--target-platform=android-arm,android-arm64` instead (drops x86_64).
-        // Google test AdMob app id — replace with your real id for production.
+        // AdMob App ID (must match the AdMob app that owns your ad units).
         manifestPlaceholders["admobAppId"] =
-            "ca-app-pub-3940256099942544~3347511713"
+            "ca-app-pub-9234854277833241~5778854480"
     }
 
     signingConfigs {

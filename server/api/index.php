@@ -160,9 +160,6 @@ function save_profile(bool $creating): void
         unlink_public(is_string($photoPath) ? $photoPath : null);
         $photoPath = $uploaded;
     }
-    if ($creating && ($photoPath === null || $photoPath === '')) {
-        fail(400, 'invalid-argument', 'Add a photo to continue.');
-    }
     $stamp = now();
     if ($creating) {
         $insert = db()->prepare(
