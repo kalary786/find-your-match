@@ -127,20 +127,9 @@ function ensure_runtime_tables(PDO $pdo): void
           admob_interstitial_unit VARCHAR(80) NOT NULL DEFAULT \'\',
           admob_app_open_unit VARCHAR(80) NOT NULL DEFAULT \'\',
           admob_in_chats TINYINT(1) NOT NULL DEFAULT 0,
-          appnext_banner VARCHAR(120) NOT NULL DEFAULT \'\',
-          appnext_interstitial VARCHAR(120) NOT NULL DEFAULT \'\',
-          appnext_type VARCHAR(24) NOT NULL DEFAULT \'interstitial\',
           facebook_banner VARCHAR(120) NOT NULL DEFAULT \'\',
           facebook_interstitial VARCHAR(120) NOT NULL DEFAULT \'\',
-          startio_app_id VARCHAR(120) NOT NULL DEFAULT \'\',
-          unity_game_id VARCHAR(80) NOT NULL DEFAULT \'\',
-          unity_banner_placement VARCHAR(80) NOT NULL DEFAULT \'\',
-          unity_interstitial_placement VARCHAR(80) NOT NULL DEFAULT \'\',
-          ironsource_app_key VARCHAR(80) NOT NULL DEFAULT \'\',
-          wortise_app_id VARCHAR(80) NOT NULL DEFAULT \'\',
-          wortise_banner_unit VARCHAR(80) NOT NULL DEFAULT \'\',
-          wortise_interstitial_unit VARCHAR(80) NOT NULL DEFAULT \'\',
-          monetag_link VARCHAR(500) NOT NULL DEFAULT \'\',
+          lofts_link VARCHAR(500) NOT NULL DEFAULT \'\',
           banner_position VARCHAR(8) NOT NULL DEFAULT \'bottom\',
           banner_size VARCHAR(8) NOT NULL DEFAULT \'normal\',
           page_interval TINYINT UNSIGNED NOT NULL DEFAULT 4,
@@ -149,6 +138,7 @@ function ensure_runtime_tables(PDO $pdo): void
           show_first_launch TINYINT(1) NOT NULL DEFAULT 1
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4'
     );
+    ensure_column($pdo, 'network_ad_settings', 'lofts_link', 'VARCHAR(500) NOT NULL DEFAULT \'\'');
 }
 
 function ensure_column(PDO $pdo, string $table, string $column, string $definition): void
@@ -219,20 +209,9 @@ function network_ad_from_post(array $post): array
         'admob_interstitial_unit' => $token('admob_interstitial_unit', 80),
         'admob_app_open_unit' => $token('admob_app_open_unit', 80),
         'admob_in_chats' => $flag('admob_in_chats'),
-        'appnext_banner' => $token('appnext_banner'),
-        'appnext_interstitial' => $token('appnext_interstitial'),
-        'appnext_type' => $one('appnext_type', ['interstitial', 'native'], 'interstitial'),
         'facebook_banner' => $token('facebook_banner'),
         'facebook_interstitial' => $token('facebook_interstitial'),
-        'startio_app_id' => $token('startio_app_id'),
-        'unity_game_id' => $token('unity_game_id', 80),
-        'unity_banner_placement' => $token('unity_banner_placement', 80),
-        'unity_interstitial_placement' => $token('unity_interstitial_placement', 80),
-        'ironsource_app_key' => $token('ironsource_app_key', 80),
-        'wortise_app_id' => $token('wortise_app_id', 80),
-        'wortise_banner_unit' => $token('wortise_banner_unit', 80),
-        'wortise_interstitial_unit' => $token('wortise_interstitial_unit', 80),
-        'monetag_link' => optional_link((string) ($post['monetag_link'] ?? '')),
+        'lofts_link' => optional_link((string) ($post['lofts_link'] ?? '')),
         'banner_position' => $one('banner_position', ['top', 'bottom'], 'bottom'),
         'banner_size' => $one('banner_size', ['normal', 'large'], 'normal'),
         'page_interval' => $interval('page_interval', [0, 2, 3, 4, 5, 8, 10], 4),
@@ -263,20 +242,9 @@ function network_ad_public(array $row): array
         'admobInterstitialUnit' => (string) ($row['admob_interstitial_unit'] ?? ''),
         'admobAppOpenUnit' => (string) ($row['admob_app_open_unit'] ?? ''),
         'admobInChats' => (int) ($row['admob_in_chats'] ?? 0) === 1,
-        'appnextBanner' => (string) ($row['appnext_banner'] ?? ''),
-        'appnextInterstitial' => (string) ($row['appnext_interstitial'] ?? ''),
-        'appnextType' => (string) ($row['appnext_type'] ?? 'interstitial'),
         'facebookBanner' => (string) ($row['facebook_banner'] ?? ''),
         'facebookInterstitial' => (string) ($row['facebook_interstitial'] ?? ''),
-        'startioAppId' => (string) ($row['startio_app_id'] ?? ''),
-        'unityGameId' => (string) ($row['unity_game_id'] ?? ''),
-        'unityBannerPlacement' => (string) ($row['unity_banner_placement'] ?? ''),
-        'unityInterstitialPlacement' => (string) ($row['unity_interstitial_placement'] ?? ''),
-        'ironsourceAppKey' => (string) ($row['ironsource_app_key'] ?? ''),
-        'wortiseAppId' => (string) ($row['wortise_app_id'] ?? ''),
-        'wortiseBannerUnit' => (string) ($row['wortise_banner_unit'] ?? ''),
-        'wortiseInterstitialUnit' => (string) ($row['wortise_interstitial_unit'] ?? ''),
-        'monetagLink' => (string) ($row['monetag_link'] ?? ''),
+        'loftsLink' => (string) ($row['lofts_link'] ?? ''),
         'bannerPosition' => (string) ($row['banner_position'] ?? 'bottom'),
         'bannerSize' => (string) ($row['banner_size'] ?? 'normal'),
         'pageInterval' => (int) ($row['page_interval'] ?? 4),
@@ -609,6 +577,9 @@ function list_field(mixed $value, array $allowed): array
 function validate_profile_fields(array $input, bool $photoRequired, bool $hasExistingPhoto): array
 {
     $username = strtolower(trim((string) ($input['username'] ?? '')));
+    if ($username === '') {
+        fail(400, 'invalid-argument', 'Enter a username.');
+    }
     if (!preg_match('/^[a-z0-9_]{3,20}$/', $username)) {
         fail(400, 'invalid-argument', 'Username must be 3–20 characters: lowercase letters, numbers, or underscore.');
     }
@@ -620,30 +591,25 @@ function validate_profile_fields(array $input, bool $photoRequired, bool $hasExi
     if ($age < 18) {
         fail(400, 'invalid-argument', 'You must be 18 or older. No profile was saved.');
     }
-    $gender = (string) ($input['gender'] ?? '');
-    if (!in_array($gender, GENDERS, true)) {
+    $gender = trim((string) ($input['gender'] ?? ''));
+    if ($gender !== '' && !in_array($gender, GENDERS, true)) {
         fail(400, 'invalid-argument', 'Choose a gender.');
     }
     $city = trim((string) ($input['city'] ?? ''));
+    if ($city === '') {
+        fail(400, 'invalid-argument', 'Enter your country.');
+    }
     if (!preg_match("/^[A-Za-z][A-Za-z .'-]{1,39}$/", $city)) {
-        fail(400, 'invalid-argument', 'Enter a city using letters, up to 40 characters.');
+        fail(400, 'invalid-argument', 'Enter a country using letters, up to 40 characters.');
     }
     $bio = trim((string) ($input['bio'] ?? ''));
     $length = function_exists('mb_strlen') ? mb_strlen($bio) : strlen($bio);
-    if ($length < 8 || $length > 300) {
-        fail(400, 'invalid-argument', 'Bio must be between 8 and 300 characters.');
+    if ($length > 300) {
+        fail(400, 'invalid-argument', 'Bio must be 300 characters or fewer.');
     }
     $interests = list_field($input['interests'] ?? [], INTERESTS);
     $preferences = list_field($input['preferences'] ?? ($input['relationshipPreferences'] ?? []), PREFERENCES);
-    if ($interests === []) {
-        fail(400, 'invalid-argument', 'Choose at least one interest.');
-    }
-    if ($preferences === []) {
-        fail(400, 'invalid-argument', 'Choose at least one relationship preference.');
-    }
-    if ($photoRequired && !$hasExistingPhoto && empty($_FILES['photo']['tmp_name'])) {
-        fail(400, 'invalid-argument', 'Add a photo to continue.');
-    }
+    // Photo, gender, bio, interests, and preferences are optional ($photoRequired unused).
     return [
         'username' => $username,
         'birthDate' => $birthDate,

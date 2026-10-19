@@ -28,28 +28,28 @@ void main() {
     );
   });
 
-  test('full-screen ads rotate AdMob and Monetag, and chat skips AdMob', () {
+  test('full-screen ads rotate AdMob and Lofts; chat skips AdMob', () {
     const settings = NetworkAdSettings(
       interstitialEnabled: true,
       admobInterstitialUnit: 'ca-app-pub-3940256099942544/1033173712',
-      monetagLink: 'https://example.com/offer',
+      loftsLink: 'https://example.com/lofts',
       facebookInterstitial: '123',
     );
     final outside = interstitialChoices(settings, inChat: false);
     expect(outside.map((slot) => slot.network), [
       AdNetwork.admob,
-      AdNetwork.monetag,
+      AdNetwork.lofts,
     ]);
-    expect(chooseSlot(outside, 1)!.network, AdNetwork.monetag);
+    expect(chooseSlot(outside, 1)!.network, AdNetwork.lofts);
     expect(
       interstitialChoices(settings, inChat: true).single.network,
-      AdNetwork.monetag,
+      AdNetwork.lofts,
     );
     expect(
       interstitialChoices(
         const NetworkAdSettings(
           interstitialEnabled: true,
-          monetagLink: 'javascript:alert(1)',
+          loftsLink: 'javascript:alert(1)',
         ),
         inChat: true,
       ),

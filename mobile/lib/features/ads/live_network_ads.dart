@@ -37,7 +37,7 @@ class LiveFullScreenAdPlayer implements FullScreenAdPlayer {
           await _showInterstitial(slot.id);
         case AdNetwork.admobAppOpen:
           await _showAppOpen(slot.id);
-        case AdNetwork.monetag:
+        case AdNetwork.lofts:
           final uri = externalHttpUri(slot.id);
           if (uri == null) return;
           await launchUrl(uri, mode: LaunchMode.inAppBrowserView);

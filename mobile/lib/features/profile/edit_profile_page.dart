@@ -31,7 +31,7 @@ class EditProfilePage extends ConsumerWidget {
       title: 'Edit profile',
       submitLabel: 'Save changes',
       initial: saved.person,
-      photoFileRequired: true,
+      photoFileRequired: false,
       keepExistingPhoto: saved.person.hasPhoto || saved.person.photoUrl != null,
       choosePhoto: pickGalleryPhoto,
       takenUsernames: const {},

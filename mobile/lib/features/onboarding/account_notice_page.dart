@@ -1,5 +1,6 @@
 import 'package:find_your_match/core/routing/app_routes.dart';
 import 'package:find_your_match/core/session/session_controller.dart';
+import 'package:find_your_match/core/theme/app_tokens.dart';
 import 'package:find_your_match/features/onboarding/onboarding_frame.dart';
 import 'package:find_your_match/features/profile/account_failure.dart';
 import 'package:find_your_match/features/profile/saved_account.dart';
@@ -20,6 +21,7 @@ class _AccountNoticePageState extends ConsumerState<AccountNoticePage> {
   var _login = false;
   var _agreed = false;
   var _busy = false;
+  var _obscure = true;
   String? _error;
 
   @override
@@ -89,37 +91,52 @@ class _AccountNoticePageState extends ConsumerState<AccountNoticePage> {
     return OnboardingFrame(
       step: 3,
       title: _login ? 'Sign in' : 'Create your login',
+      subtitle:
+          'Your email and password live on your website. The same login opens this profile on another phone.',
       actionLabel: _busy ? 'Please wait…' : 'Continue',
+      onBack: () => context.go(AppRoutes.howItWorks),
       onAction: _busy ? null : _submit,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Your email and password live on your website. The same login opens this profile on another phone.',
-            style: theme.textTheme.bodyLarge,
-          ),
-          const SizedBox(height: 12),
-          Text(
             'An admin can block or delete the account from the website. There is no recovery if the admin deletes it.',
-            style: theme.textTheme.bodyLarge,
+            style: theme.textTheme.bodyLarge?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppTokens.space16),
           TextField(
             controller: _email,
             keyboardType: TextInputType.emailAddress,
             autofillHints: const [AutofillHints.email],
-            decoration: const InputDecoration(labelText: 'Email'),
+            decoration: const InputDecoration(
+              labelText: 'Email',
+              prefixIcon: Icon(Icons.mail_outline_rounded),
+            ),
             onChanged: (_) => setState(() {}),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: AppTokens.space12),
           TextField(
             controller: _password,
-            obscureText: true,
-            decoration: const InputDecoration(labelText: 'Password'),
+            obscureText: _obscure,
+            decoration: InputDecoration(
+              labelText: 'Password',
+              prefixIcon: const Icon(Icons.lock_outline_rounded),
+              suffixIcon: IconButton(
+                tooltip: _obscure ? 'Show password' : 'Hide password',
+                onPressed: () => setState(() => _obscure = !_obscure),
+                icon: Icon(
+                  _obscure
+                      ? Icons.visibility_outlined
+                      : Icons.visibility_off_outlined,
+                ),
+              ),
+            ),
             onChanged: (_) => setState(() {}),
           ),
           if (_error != null) ...[
-            const SizedBox(height: 12),
+            const SizedBox(height: AppTokens.space12),
             Text(
               _error!,
               style: theme.textTheme.bodyMedium?.copyWith(
@@ -129,7 +146,7 @@ class _AccountNoticePageState extends ConsumerState<AccountNoticePage> {
             ),
           ],
           if (!_login) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: AppTokens.space8),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -163,7 +180,7 @@ class _AccountNoticePageState extends ConsumerState<AccountNoticePage> {
               ],
             ),
           ],
-          const SizedBox(height: 8),
+          const SizedBox(height: AppTokens.space8),
           TextButton(
             onPressed: _busy
                 ? null

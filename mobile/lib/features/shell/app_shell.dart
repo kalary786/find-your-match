@@ -1,5 +1,8 @@
+import 'package:find_your_match/core/theme/app_colors.dart';
 import 'package:find_your_match/features/ads/network_ad_controller.dart';
 import 'package:find_your_match/features/ads/network_banner.dart';
+import 'package:find_your_match/features/notices/notices_page.dart';
+import 'package:find_your_match/features/social/social_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -22,8 +25,13 @@ class AppShell extends ConsumerWidget {
         .watch(networkAdControllerProvider)
         .settings
         .bannerAtTop;
-    final banner = NetworkBanner(inChat: navigationShell.currentIndex == 3);
+    // Chats tab (index 3) stays ad-free — no shell banner there.
+    final onChats = navigationShell.currentIndex == 3;
+    final Widget banner = onChats
+        ? const SizedBox.shrink()
+        : const NetworkBanner(inChat: false);
     final wide = MediaQuery.sizeOf(context).width >= 720;
+    final unreadNotices = ref.watch(noticeControllerProvider).unread;
     if (wide) {
       return Scaffold(
         body: Row(
@@ -32,31 +40,43 @@ class AppShell extends ConsumerWidget {
               selectedIndex: navigationShell.currentIndex,
               onDestinationSelected: _select,
               labelType: NavigationRailLabelType.all,
-              destinations: const [
-                NavigationRailDestination(
+              destinations: [
+                const NavigationRailDestination(
                   icon: Icon(Icons.explore_outlined),
                   selectedIcon: Icon(Icons.explore),
                   label: Text('Discover'),
                 ),
-                NavigationRailDestination(
+                const NavigationRailDestination(
                   icon: Icon(Icons.search),
                   selectedIcon: Icon(Icons.search),
                   label: Text('Search'),
                 ),
-                NavigationRailDestination(
+                const NavigationRailDestination(
                   icon: Icon(Icons.favorite_outline),
                   selectedIcon: Icon(Icons.favorite),
                   label: Text('Matches'),
                 ),
                 NavigationRailDestination(
-                  icon: Icon(Icons.chat_bubble_outline),
-                  selectedIcon: Icon(Icons.chat_bubble),
-                  label: Text('Chats'),
+                  icon: _BadgedIcon(
+                    icon: Icons.chat_bubble_outline,
+                    showBadge: unreadNotices > 0,
+                  ),
+                  selectedIcon: _BadgedIcon(
+                    icon: Icons.chat_bubble,
+                    showBadge: unreadNotices > 0,
+                  ),
+                  label: const Text('Chats'),
                 ),
                 NavigationRailDestination(
-                  icon: Icon(Icons.person_outline),
-                  selectedIcon: Icon(Icons.person),
-                  label: Text('Profile'),
+                  icon: _BadgedIcon(
+                    icon: Icons.person_outline,
+                    showBadge: unreadNotices > 0,
+                  ),
+                  selectedIcon: _BadgedIcon(
+                    icon: Icons.person,
+                    showBadge: unreadNotices > 0,
+                  ),
+                  label: const Text('Profile'),
                 ),
               ],
             ),
@@ -72,34 +92,63 @@ class AppShell extends ConsumerWidget {
       bottomNavigationBar: NavigationBar(
         selectedIndex: navigationShell.currentIndex,
         onDestinationSelected: _select,
-        destinations: const [
-          NavigationDestination(
+        destinations: [
+          const NavigationDestination(
             icon: Icon(Icons.explore_outlined),
             selectedIcon: Icon(Icons.explore),
             label: 'Discover',
           ),
-          NavigationDestination(
+          const NavigationDestination(
             icon: Icon(Icons.search_outlined),
             selectedIcon: Icon(Icons.search),
             label: 'Search',
           ),
-          NavigationDestination(
+          const NavigationDestination(
             icon: Icon(Icons.favorite_outline),
             selectedIcon: Icon(Icons.favorite),
             label: 'Matches',
           ),
           NavigationDestination(
-            icon: Icon(Icons.chat_bubble_outline),
-            selectedIcon: Icon(Icons.chat_bubble),
+            icon: _BadgedIcon(
+              icon: Icons.chat_bubble_outline,
+              showBadge: unreadNotices > 0,
+            ),
+            selectedIcon: _BadgedIcon(
+              icon: Icons.chat_bubble,
+              showBadge: unreadNotices > 0,
+            ),
             label: 'Chats',
           ),
           NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
+            icon: _BadgedIcon(
+              icon: Icons.person_outline,
+              showBadge: unreadNotices > 0,
+            ),
+            selectedIcon: _BadgedIcon(
+              icon: Icons.person,
+              showBadge: unreadNotices > 0,
+            ),
             label: 'Profile',
           ),
         ],
       ),
+    );
+  }
+}
+
+class _BadgedIcon extends StatelessWidget {
+  const _BadgedIcon({required this.icon, required this.showBadge});
+
+  final IconData icon;
+  final bool showBadge;
+
+  @override
+  Widget build(BuildContext context) {
+    return Badge(
+      isLabelVisible: false,
+      backgroundColor: AppColors.coral,
+      smallSize: showBadge ? 8 : 0,
+      child: Icon(icon),
     );
   }
 }

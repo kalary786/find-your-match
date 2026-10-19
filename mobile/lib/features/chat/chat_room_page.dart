@@ -1,12 +1,17 @@
 import 'dart:async';
 
 import 'package:find_your_match/core/routing/app_routes.dart';
+import 'package:find_your_match/core/theme/app_colors.dart';
+import 'package:find_your_match/core/widgets/empty_state.dart';
+import 'package:find_your_match/core/widgets/person_avatar.dart';
 import 'package:find_your_match/features/ads/network_ad_controller.dart';
-import 'package:find_your_match/features/ads/network_banner.dart';
+import 'package:find_your_match/features/chat/widgets/chat_composer.dart';
+import 'package:find_your_match/features/chat/widgets/message_bubble.dart';
 import 'package:find_your_match/features/preview/preview_models.dart';
 import 'package:find_your_match/features/profile/account_failure.dart';
 import 'package:find_your_match/features/social/social_store.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
@@ -35,6 +40,8 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage>
   Timer? _refresh;
   var _sending = false;
   var _foreground = true;
+  final _seenIds = <String>{};
+  var _seededSeen = false;
 
   @override
   void initState() {
@@ -94,6 +101,7 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage>
   Future<void> _send() async {
     final text = _text.text.trim();
     if (text.isEmpty || _sending) return;
+    HapticFeedback.lightImpact();
     setState(() => _sending = true);
     _text.clear();
     try {
@@ -112,6 +120,23 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage>
     }
   }
 
+  void _seedHello(Person person) {
+    final firstName = person.displayName.split(' ').first;
+    _text.text = 'Hi $firstName! 👋';
+    _text.selection = TextSelection.collapsed(offset: _text.text.length);
+  }
+
+  void _rememberMessages(List<ChatMessage> messages) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final hasNew = messages.any((m) => !_seenIds.contains(m.id));
+      if (!_seededSeen || hasNew) {
+        _seenIds.addAll(messages.map((m) => m.id));
+        _seededSeen = true;
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final social = ref.watch(socialControllerProvider);
@@ -121,28 +146,77 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage>
     if (person == null || blocked || !social.isMatched(widget.userId)) {
       return Scaffold(
         appBar: AppBar(title: const Text('Chat')),
-        body: const Center(
-          child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Text(
+        body: EmptyState(
+          icon: blocked ? Icons.block : Icons.chat_bubble_outline,
+          title: blocked ? 'Chat closed' : 'Not matched yet',
+          message:
               'Chat is available after a match, and closes when someone is blocked.',
-              textAlign: TextAlign.center,
-            ),
-          ),
         ),
       );
     }
     final messages = social.messages[person.id] ?? const <ChatMessage>[];
-    final bannerAtTop = ref
-        .watch(networkAdControllerProvider)
-        .settings
-        .bannerAtTop;
-    const chatBanner = NetworkBanner(inChat: true);
+    _rememberMessages(messages);
+    final muted = theme.colorScheme.onSurfaceVariant;
+    final line = AppColors.lineOf(theme.brightness);
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(person.displayName),
+        titleSpacing: 0,
+        title: InkWell(
+          onTap: () => context.push(AppRoutes.person(person.id)),
+          child: Row(
+            children: [
+              PersonAvatar(person: person, size: 40, showOnline: true),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            person.displayName,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        if (person.verified) ...[
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.verified,
+                            size: 16,
+                            color: theme.colorScheme.primary,
+                          ),
+                        ],
+                      ],
+                    ),
+                    Text(
+                      person.online ? 'Online' : person.lastActive,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        color: person.online ? AppColors.online : muted,
+                        fontWeight:
+                            person.online ? FontWeight.w600 : FontWeight.w400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
         actions: [
           PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+            ),
             onSelected: (value) async {
               if (value == 'profile') {
                 context.push(AppRoutes.person(person.id));
@@ -169,101 +243,80 @@ class _ChatRoomPageState extends ConsumerState<ChatRoomPage>
             ],
           ),
         ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(1),
+          child: ColoredBox(
+            color: line,
+            child: const SizedBox(height: 1, width: double.infinity),
+          ),
+        ),
       ),
       body: Column(
         children: [
-          if (bannerAtTop) chatBanner,
           Expanded(
-            child: ListView.builder(
-              controller: _scroll,
-              reverse: true,
-              padding: const EdgeInsets.all(16),
-              itemCount: messages.length,
-              itemBuilder: (context, index) {
-                final message = messages[messages.length - 1 - index];
-                final mine = message.fromMe;
-                return Align(
-                  alignment: mine
-                      ? Alignment.centerRight
-                      : Alignment.centerLeft,
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    constraints: BoxConstraints(
-                      maxWidth: MediaQuery.sizeOf(context).width * 0.78,
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
-                    decoration: BoxDecoration(
-                      color: mine
-                          ? theme.colorScheme.primary
-                          : theme.colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(18),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          message.text,
-                          style: theme.textTheme.bodyLarge?.copyWith(
-                            color: mine
-                                ? theme.colorScheme.onPrimary
-                                : theme.colorScheme.onSurface,
+            child: messages.isEmpty
+                ? Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          PersonAvatar(person: person, size: 72),
+                          const SizedBox(height: 16),
+                          Text(
+                            'You matched with ${person.displayName}',
+                            textAlign: TextAlign.center,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          message.timeLabel,
-                          style: theme.textTheme.labelSmall?.copyWith(
-                            color: mine
-                                ? theme.colorScheme.onPrimary.withValues(
-                                    alpha: 0.8,
-                                  )
-                                : theme.colorScheme.onSurfaceVariant,
+                          const SizedBox(height: 8),
+                          TextButton(
+                            onPressed: () => _seedHello(person),
+                            child: Text(
+                              'Say hello 👋',
+                              style: theme.textTheme.bodyLarge?.copyWith(
+                                color: muted,
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          if (!bannerAtTop) chatBanner,
-          SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(12, 4, 12, 12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      key: const Key('chat-input'),
-                      controller: _text,
-                      textInputAction: TextInputAction.send,
-                      maxLength: 1000,
-                      buildCounter:
-                          (
-                            context, {
-                            required int currentLength,
-                            required bool isFocused,
-                            int? maxLength,
-                          }) => null,
-                      decoration: const InputDecoration(
-                        hintText: 'Write a message · 100 a day',
+                        ],
                       ),
-                      onSubmitted: (_) => _send(),
                     ),
+                  )
+                : ListView.builder(
+                    controller: _scroll,
+                    reverse: true,
+                    padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                    itemCount: messages.length,
+                    itemBuilder: (context, index) {
+                      final chronologicalIndex = messages.length - 1 - index;
+                      final message = messages[chronologicalIndex];
+                      final isNew =
+                          _seededSeen && !_seenIds.contains(message.id);
+                      final position = bubbleGroupPosition(
+                        messages: messages,
+                        index: chronologicalIndex,
+                      );
+                      final spacing = bubbleBottomSpacing(
+                        messages: messages,
+                        index: chronologicalIndex,
+                      );
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: spacing),
+                        child: MessageBubble(
+                          message: message,
+                          position: position,
+                          animateIn: isNew,
+                        ),
+                      );
+                    },
                   ),
-                  const SizedBox(width: 8),
-                  IconButton.filled(
-                    tooltip: 'Send',
-                    onPressed: _sending ? null : _send,
-                    icon: const Icon(Icons.send),
-                  ),
-                ],
-              ),
-            ),
+          ),
+          ChatComposer(
+            controller: _text,
+            sending: _sending,
+            onSend: _send,
           ),
         ],
       ),

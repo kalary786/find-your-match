@@ -1,6 +1,6 @@
 import 'package:find_your_match/features/ads/external_link.dart';
 
-enum AdNetwork { admob, admobAppOpen, monetag }
+enum AdNetwork { admob, admobAppOpen, lofts }
 
 class AdSlot {
   const AdSlot(this.network, this.id);
@@ -18,20 +18,9 @@ class NetworkAdSettings {
     this.admobInterstitialUnit = '',
     this.admobAppOpenUnit = '',
     this.admobInChats = false,
-    this.appnextBanner = '',
-    this.appnextInterstitial = '',
-    this.appnextType = 'interstitial',
     this.facebookBanner = '',
     this.facebookInterstitial = '',
-    this.startioAppId = '',
-    this.unityGameId = '',
-    this.unityBannerPlacement = '',
-    this.unityInterstitialPlacement = '',
-    this.ironsourceAppKey = '',
-    this.wortiseAppId = '',
-    this.wortiseBannerUnit = '',
-    this.wortiseInterstitialUnit = '',
-    this.monetagLink = '',
+    this.loftsLink = '',
     this.bannerPosition = 'bottom',
     this.bannerSize = 'normal',
     this.pageInterval = 4,
@@ -49,20 +38,9 @@ class NetworkAdSettings {
   final String admobInterstitialUnit;
   final String admobAppOpenUnit;
   final bool admobInChats;
-  final String appnextBanner;
-  final String appnextInterstitial;
-  final String appnextType;
   final String facebookBanner;
   final String facebookInterstitial;
-  final String startioAppId;
-  final String unityGameId;
-  final String unityBannerPlacement;
-  final String unityInterstitialPlacement;
-  final String ironsourceAppKey;
-  final String wortiseAppId;
-  final String wortiseBannerUnit;
-  final String wortiseInterstitialUnit;
-  final String monetagLink;
+  final String loftsLink;
   final String bannerPosition;
   final String bannerSize;
   final int pageInterval;
@@ -82,20 +60,9 @@ class NetworkAdSettings {
       admobInterstitialUnit: _text(json['admobInterstitialUnit']),
       admobAppOpenUnit: _text(json['admobAppOpenUnit']),
       admobInChats: _flag(json['admobInChats']),
-      appnextBanner: _text(json['appnextBanner']),
-      appnextInterstitial: _text(json['appnextInterstitial']),
-      appnextType: _text(json['appnextType']),
       facebookBanner: _text(json['facebookBanner']),
       facebookInterstitial: _text(json['facebookInterstitial']),
-      startioAppId: _text(json['startioAppId']),
-      unityGameId: _text(json['unityGameId']),
-      unityBannerPlacement: _text(json['unityBannerPlacement']),
-      unityInterstitialPlacement: _text(json['unityInterstitialPlacement']),
-      ironsourceAppKey: _text(json['ironsourceAppKey']),
-      wortiseAppId: _text(json['wortiseAppId']),
-      wortiseBannerUnit: _text(json['wortiseBannerUnit']),
-      wortiseInterstitialUnit: _text(json['wortiseInterstitialUnit']),
-      monetagLink: _text(json['monetagLink']),
+      loftsLink: _text(json['loftsLink']),
       bannerPosition: _text(json['bannerPosition']).isEmpty
           ? 'bottom'
           : _text(json['bannerPosition']),
@@ -176,9 +143,9 @@ List<AdSlot> interstitialChoices(
   if (!inChat && settings.admobInterstitialUnit.isNotEmpty) {
     slots.add(AdSlot(AdNetwork.admob, settings.admobInterstitialUnit));
   }
-  final link = settings.monetagLink.trim();
-  if (externalHttpUri(link) != null) {
-    slots.add(AdSlot(AdNetwork.monetag, link));
+  final lofts = settings.loftsLink.trim();
+  if (externalHttpUri(lofts) != null) {
+    slots.add(AdSlot(AdNetwork.lofts, lofts));
   }
   return slots;
 }

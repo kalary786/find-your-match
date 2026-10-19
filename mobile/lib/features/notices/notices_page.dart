@@ -2,6 +2,8 @@ import 'package:find_your_match/features/ads/external_link.dart';
 import 'package:find_your_match/core/api/match_api.dart';
 import 'package:find_your_match/core/routing/app_routes.dart';
 import 'package:find_your_match/core/session/session_controller.dart';
+import 'package:find_your_match/core/theme/app_colors.dart';
+import 'package:find_your_match/core/theme/app_tokens.dart';
 import 'package:find_your_match/core/widgets/empty_state.dart';
 import 'package:find_your_match/features/profile/account_failure.dart';
 import 'package:find_your_match/features/social/social_store.dart';
@@ -118,9 +120,15 @@ class _NoticesPageState extends ConsumerState<NoticesPage> {
               message: 'Messages and links from the app show up here.',
             )
           : ListView.separated(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+              padding: const EdgeInsets.fromLTRB(
+                AppTokens.space16,
+                AppTokens.space12,
+                AppTokens.space16,
+                AppTokens.space24,
+              ),
               itemCount: state.notices.length,
-              separatorBuilder: (context, index) => const SizedBox(height: 12),
+              separatorBuilder: (context, index) =>
+                  const SizedBox(height: AppTokens.space12),
               itemBuilder: (context, index) {
                 final notice = state.notices[index];
                 return _NoticeCard(
@@ -145,40 +153,94 @@ class _NoticeCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final canOpen = externalHttpUri(notice.linkUrl) != null;
-    return Card(
+    return Material(
+      color: notice.read
+          ? theme.colorScheme.surfaceContainerLowest
+          : theme.colorScheme.primaryContainer.withValues(alpha: 0.35),
+      shape: RoundedRectangleBorder(
+        borderRadius: AppTokens.lg,
+        side: BorderSide(color: theme.colorScheme.outlineVariant),
+      ),
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onRead,
         child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
+          padding: const EdgeInsets.all(AppTokens.space16),
+          child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                notice.title,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: notice.read ? FontWeight.w600 : FontWeight.w800,
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primary.withValues(alpha: 0.14),
+                  borderRadius: AppTokens.md,
+                ),
+                child: Icon(
+                  canOpen
+                      ? Icons.link_outlined
+                      : Icons.notifications_outlined,
+                  color: theme.colorScheme.primary,
                 ),
               ),
-              const SizedBox(height: 6),
-              Text(notice.body, style: theme.textTheme.bodyLarge),
-              const SizedBox(height: 8),
-              Text(
-                notice.timeLabel,
-                style: theme.textTheme.labelMedium?.copyWith(
-                  color: theme.colorScheme.onSurfaceVariant,
+              const SizedBox(width: AppTokens.space12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            notice.title,
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: notice.read
+                                  ? FontWeight.w600
+                                  : FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                        if (!notice.read)
+                          Container(
+                            width: 10,
+                            height: 10,
+                            margin: const EdgeInsets.only(left: 8),
+                            decoration: const BoxDecoration(
+                              color: AppColors.coral,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      notice.body,
+                      style: theme.textTheme.bodyLarge?.copyWith(height: 1.45),
+                    ),
+                    const SizedBox(height: AppTokens.space8),
+                    Text(
+                      notice.timeLabel,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: theme.colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                    if (canOpen) ...[
+                      const SizedBox(height: AppTokens.space12),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: FilledButton.tonalIcon(
+                          onPressed: () {
+                            onRead();
+                            openExternalLink(notice.linkUrl);
+                          },
+                          icon: const Icon(Icons.open_in_new, size: 18),
+                          label: const Text('Open link'),
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
               ),
-              if (canOpen) ...[
-                const SizedBox(height: 12),
-                FilledButton.tonalIcon(
-                  onPressed: () {
-                    onRead();
-                    openExternalLink(notice.linkUrl);
-                  },
-                  icon: const Icon(Icons.open_in_new),
-                  label: const Text('Open link'),
-                ),
-              ],
             ],
           ),
         ),

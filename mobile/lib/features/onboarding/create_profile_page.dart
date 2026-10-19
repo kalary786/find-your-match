@@ -15,7 +15,7 @@ class CreateProfilePage extends ConsumerWidget {
       title: 'Create profile',
       stepLabel: 'Step 4 of 4',
       submitLabel: 'Save profile',
-      photoFileRequired: true,
+      photoFileRequired: false,
       choosePhoto: pickGalleryPhoto,
       takenUsernames: const {},
       onBack: () => context.go(AppRoutes.account),
