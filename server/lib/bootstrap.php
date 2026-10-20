@@ -11,7 +11,7 @@ const PREFERENCES = [
     'Friendship', 'Dating', 'Long-term relationship', 'Marriage',
 ];
 const REPORT_REASONS = [
-    'Harassment', 'Spam', 'Fake profile', 'Inappropriate photo',
+    'Child safety', 'Harassment', 'Spam', 'Fake profile', 'Inappropriate photo',
     'Hate', 'Threat', 'Other',
 ];
 const AD_PLACEMENTS = ['discover', 'search', 'matches'];

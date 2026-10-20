@@ -3,13 +3,15 @@ import 'package:find_your_match/core/api/api_config.dart';
 enum LegalDocument {
   terms,
   privacy,
-  guidelines;
+  guidelines,
+  childSafety;
 
   static LegalDocument? fromSlug(String? slug) {
     return switch (slug) {
       'terms' => LegalDocument.terms,
       'privacy' => LegalDocument.privacy,
       'guidelines' => LegalDocument.guidelines,
+      'child-safety' => LegalDocument.childSafety,
       _ => null,
     };
   }
@@ -28,6 +30,7 @@ extension LegalDocumentText on LegalDocument {
       LegalDocument.terms => 'Terms',
       LegalDocument.privacy => 'Privacy',
       LegalDocument.guidelines => 'Community guidelines',
+      LegalDocument.childSafety => 'Child safety standards',
     };
   }
 
@@ -36,6 +39,7 @@ extension LegalDocumentText on LegalDocument {
       LegalDocument.terms => '/terms.php',
       LegalDocument.privacy => '/privacy.php',
       LegalDocument.guidelines => '/guidelines.php',
+      LegalDocument.childSafety => '/child-safety.php',
     };
   }
 
@@ -67,7 +71,7 @@ extension LegalDocumentText on LegalDocument {
         ),
         LegalSection(
           'Safety',
-          'You can unmatch, block, or report another person. An admin can block an account, delete a chat, or delete an account. An admin block signs that person out and hides them.',
+          'You can unmatch, block, or report another person. An admin can block an account, delete a chat, or delete an account. An admin block signs that person out and hides them. Child sexual abuse and exploitation (CSAE) is prohibited. The child safety standards say what is banned, how to report it, and what happens after a report.',
         ),
         LegalSection(
           'Ending use',
@@ -103,7 +107,7 @@ extension LegalDocumentText on LegalDocument {
       LegalDocument.guidelines => const [
         LegalSection(
           'Adults only',
-          'Be 18 or older. Do not say you are under 18, and do not ask for or share sexual content involving anyone under 18.',
+          'Be 18 or older. Do not say you are under 18, and do not ask for or share sexual content involving anyone under 18. The child safety standards prohibit child sexual abuse and exploitation (CSAE).',
         ),
         LegalSection(
           'How to treat people',
@@ -112,6 +116,32 @@ extension LegalDocumentText on LegalDocument {
         LegalSection(
           'Reports',
           'Use block and report when someone breaks these rules. Reports go to the admin panel. An admin may remove a chat, block the account, or delete it.',
+        ),
+      ],
+      LegalDocument.childSafety => const [
+        LegalSection(
+          'Published standards',
+          'Find Your Match prohibits child sexual abuse and exploitation (CSAE). These standards apply to the Find Your Match app and the website that stores accounts, profiles, and chats.',
+        ),
+        LegalSection(
+          'What is prohibited',
+          'Do not create, upload, request, or share child sexual abuse material (CSAM), sexual content involving anyone under 18, grooming, or a profile that presents someone as under 18.',
+        ),
+        LegalSection(
+          'Adults only',
+          'Find Your Match is an 18+ app and is not directed at children. A date of birth under 18 is rejected. Age comes from the date of birth you type. The app does not check an identity document. An account we learn is under 18 is deleted.',
+        ),
+        LegalSection(
+          'How to report',
+          'Open the person’s profile, or the menu in a chat, and tap Report. Choose Child safety, Inappropriate photo, or Other. You can also block that person. Do not copy or forward the content.',
+        ),
+        LegalSection(
+          'What we do after we know',
+          'When we obtain actual knowledge of CSAM or other CSAE, we remove the content, block or delete the account, and can delete the chat. Confirmed CSAM is reported to the National Center for Missing and Exploited Children (NCMEC) or the relevant regional authority.',
+        ),
+        LegalSection(
+          'Child safety contact',
+          'Google Play can write to the child safety point of contact named for Find Your Match in Play Console. People using the app should use Report. Do not send images of a child to that contact.',
         ),
       ],
     };

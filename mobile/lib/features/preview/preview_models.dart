@@ -177,6 +177,7 @@ abstract final class ProfileOptions {
     'Marriage',
   ];
   static const reportReasons = [
+    'Child safety',
     'Harassment',
     'Spam',
     'Fake profile',

@@ -15,7 +15,7 @@ render_public_page('Terms', <<<'HTML'
 <h2>Matching and chat</h2>
 <p>A like stays private until the other person likes you back. Text chat opens only after a mutual match. Unmatching removes that match and its chat for both people. There is no promise that you will receive likes, matches, or replies.</p>
 <h2>Safety</h2>
-<p>You can unmatch, block, or report another person. An admin can block an account, delete a chat, or delete an account. An admin block signs that person out and hides them.</p>
+<p>You can unmatch, block, or report another person. An admin can block an account, delete a chat, or delete an account. An admin block signs that person out and hides them. Child sexual abuse and exploitation (CSAE) is prohibited. Read the <a href="child-safety.php">child safety standards</a>.</p>
 <h2>Ending use</h2>
 <p>You can hide your profile, sign out, or delete the account. Deletion removes the profile, photo, likes, matches, and chats. The email can be used later to register a new account.</p>
 HTML);

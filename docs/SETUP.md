@@ -42,7 +42,7 @@ Create the app with package name `com.findyourmatch.app` when you are ready to p
 - Target audience 18 and over. Do not target children.
 - Use Play’s control that blocks minors. Dating is the core of this app, so a typed date of birth is only an extra check.
 - Content rating, including user-generated content.
-- Child safety standards declaration for social and dating apps.
+- Child safety standards declaration for social and dating apps. The published standards URL is `https://bngames.shop/server/child-safety.php`. In Play Console, also name a child safety contact who can remove content and act on a notice from Google.
 - Data safety, a public privacy policy URL, and an account-deletion URL.
 - Store listing that does not claim identity verification or policy compliance you have not verified.
 
@@ -59,6 +59,7 @@ Terms, Privacy, and Community Guidelines are in the app under Settings, and on t
 - `https://bngames.shop/server/terms.php`
 - `https://bngames.shop/server/privacy.php`
 - `https://bngames.shop/server/guidelines.php`
+- `https://bngames.shop/server/child-safety.php`
 - `https://bngames.shop/server/delete-account.php`
 
 Upload the new files in `server/` before those addresses will open. Have the pages reviewed before you submit the app. They describe how this build works. They are not a compliance sign-off.

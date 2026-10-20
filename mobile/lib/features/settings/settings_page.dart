@@ -115,6 +115,13 @@ class SettingsPage extends ConsumerWidget {
             trailing: const Icon(Icons.chevron_right),
             onTap: () => context.push(AppRoutes.guidelines),
           ),
+          ListTile(
+            contentPadding: EdgeInsets.zero,
+            leading: const Icon(Icons.shield_outlined),
+            title: const Text('Child safety standards'),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => context.push(AppRoutes.childSafety),
+          ),
           const Divider(),
           Text(
             'Account',

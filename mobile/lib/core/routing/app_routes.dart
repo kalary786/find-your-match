@@ -20,6 +20,7 @@ abstract final class AppRoutes {
   static const terms = '/legal/terms';
   static const privacy = '/legal/privacy';
   static const guidelines = '/legal/guidelines';
+  static const childSafety = '/legal/child-safety';
 
   static String person(String id) => '/people/$id';
   static String conversation(String id) => '/conversation/$id';
